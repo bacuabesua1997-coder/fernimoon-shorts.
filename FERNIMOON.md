@@ -79,6 +79,15 @@ Hệ thống **tạo file để bạn tải xuống**, chưa tự đăng lên Yo
 - Video ngang được crop giữa để lấp đầy khung dọc; cần xem lại chủ thể có bị cắt không. Clip ngắn có thể được lặp để phủ đủ cảnh. Không thêm nhạc nền có bản quyền; chỉ sử dụng lời đọc ElevenLabs.
 - Lưu cache kết quả tìm kiếm 24 giờ theo hướng dẫn Pixabay. Cache không chứa API key; workflow phục hồi cache giữa các lần chạy.
 
+### Khi Pixabay không tải được một clip
+
+- Log tải video chỉ ghi mã HTTP, host CDN đã được kiểm tra, ID clip, cảnh và số lần thử. Không ghi URL đầy đủ, query string/chữ ký, API key, response body hoặc lỗi mạng thô.
+- Mỗi URL được tải tối đa **3 lần** khi gặp HTTP **408, 429, 5xx**, lỗi kết nối, timeout hoặc dữ liệu tải thiếu. Thời gian chờ tăng dần; ưu tiên `Retry-After` nếu có, giới hạn **30 giây**. Mỗi thao tác mạng có timeout 30 giây. File `.part` được xóa trước lần thử tiếp theo; chỉ thay file đích sau khi tải xong.
+- HTTP **401/403/404/410 từ CDN** có thể do URL hết hạn, clip bị gỡ hoặc hạn chế truy cập. Hệ thống làm mới kết quả Pixabay tối đa **một lần cho mỗi truy vấn trong một lần chạy**, bỏ cache cũ ngay cả khi chưa đủ 24 giờ. Chỉ thử lại cùng clip nếu API trả về URL khác và metadata vẫn qua kiểm tra nguồn; không lặp URL đã thất bại hoặc tìm cách vượt hạn chế CDN.
+- Nếu clip vẫn lỗi, chọn clip `film` khác; tối đa **3 ID clip cho mỗi truy vấn**, rồi chuyển sang truy vấn thay thế của cảnh. Clip lỗi và clip đã dùng không được chọn lại trong các cảnh sau. `sources.json` chỉ chứa clip tải thành công, bao gồm URL mới nếu được làm mới.
+- Giữ nguyên kiểm tra HTTPS/host MP4 Pixabay ở URL ban đầu, từng redirect và URL cuối; giới hạn 150 MiB, loại video và nhãn AI. Phản hồi HTML thay vì MP4 bị từ chối. Lỗi chính sách nguồn hoặc ghi file cục bộ dừng pipeline, không bị che thành lỗi mạng.
+- Run [42184840403](https://github.com/bacuabesua1997-coder/fernimoon-shorts./actions/runs/42184840403) dừng ở lần tải đầu tiên sau khi Gemini hoàn tất và không có cache phục hồi. Log cũ không giữ mã HTTP nên chưa thể xác định nguyên nhân CDN cụ thể; thông báo mới giúp phân biệt những trường hợp trên.
+
 ## Chạy trên máy hoặc Codex
 
 Yêu cầu Python 3.12+, FFmpeg/ffprobe có `libass`, `libx264`, `atempo`, `loudnorm` và font DejaVu Sans.
@@ -122,7 +131,9 @@ Các kiểm thử không thay thế một lần chạy với key thật: quyền
 | --- | --- |
 | Không thấy Run workflow | Merge workflow vào `main`, bật Actions, đăng nhập tài khoản có quyền chạy; thử trình duyệt Desktop site |
 | Missing GitHub Secrets | Thêm đủ bốn Repository Secrets, kiểm tra đúng chữ hoa và không để trống |
-| HTTP 401/403 | Kiểm tra key, quyền API/model và quyền dùng voice; không dán key vào issue |
+| HTTP 401/403 từ API | Kiểm tra key, quyền API/model và quyền dùng voice; không dán key vào issue |
+| HTTP 401/403/404/410 từ Pixabay CDN | Hệ thống tự làm mới URL một lần/truy vấn và thử clip khác; nếu mọi clip đều lỗi, có thể do clip bị gỡ hoặc CDN hạn chế truy cập, không nhất thiết do API key |
+| No downloadable real-film candidate | Đã hết số clip được phép thử; xem mã HTTP và ID clip trong log, thử lại sau hoặc chọn chủ đề khác |
 | HTTP 429 | Kiểm tra quota/số dư; đợi rồi chạy lại. Gemini/Pixabay có retry giới hạn |
 | No suitable real-film candidate | Dùng chủ đề có cảnh quay thực tế phổ biến hơn, ví dụ rừng, động vật, biển; không có fallback ảnh |
 | Missing/mismatched timestamps | ElevenLabs không trả alignment khớp lời đọc; thử voice/model tương thích. Không xuất phụ đề đoán thời gian |

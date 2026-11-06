@@ -132,11 +132,13 @@ class FootageTests(unittest.TestCase):
     @patch("fernimoon.http.urllib.request.build_opener")
     def test_failed_download_removes_partial_file(self, opener):
         stream = opener.return_value.open.return_value.__enter__.return_value
+        stream.geturl.return_value = "https://cdn.pixabay.com/video/test.mp4"
+        stream.headers = {"Content-Type": "video/mp4"}
         stream.read.side_effect = [b"partial", TimeoutError()]
         with tempfile.TemporaryDirectory() as tmp:
             destination = Path(tmp) / "footage.mp4"
             with self.assertRaises(PipelineError):
-                download_video("https://cdn.pixabay.com/video/test.mp4", destination)
+                download_video("https://cdn.pixabay.com/video/test.mp4", destination, retries=0)
             self.assertFalse(destination.exists())
             self.assertFalse(destination.with_suffix(".part").exists())
 
