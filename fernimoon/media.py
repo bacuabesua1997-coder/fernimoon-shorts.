@@ -52,8 +52,12 @@ def verify_output(path: Path, target: float) -> dict:
     video = next((s for s in data.get("streams", []) if s.get("codec_type") == "video"), {})
     audio = next((s for s in data.get("streams", []) if s.get("codec_type") == "audio"), {})
     duration = media_duration(data)
-    if (video.get("width"), video.get("height"), video.get("codec_name"), video.get("pix_fmt")) != (1080, 1920, "h264", "yuv420p"):
-        raise PipelineError("Rendered video failed the 1080×1920 H.264 compatibility check.")
+    actual_video = (video.get("width"), video.get("height"), video.get("codec_name"), video.get("pix_fmt"))
+    if actual_video != (1080, 1920, "h264", "yuv420p"):
+        raise PipelineError(
+            "Rendered video failed the 1080×1920 H.264 compatibility check. "
+            f"Actual width={actual_video[0]}, height={actual_video[1]}, "
+            f"codec={actual_video[2]}, pixel_format={actual_video[3]}.")
     if audio.get("codec_name") != "aac" or not 35 <= duration <= 45.15 or abs(duration - target) > 0.15:
         raise PipelineError("Rendered video failed the audio/duration check.")
     try:
@@ -132,7 +136,8 @@ def render(work: Path, sources: list[dict], boundaries: list[float], speed: floa
         command += ["-map", "0:v:0", "-map", "1:a:0", "-af",
                     f"atempo={speed:.10f},loudnorm=I=-16:TP=-1.5:LRA=11,"
                     f"aresample=48000,apad,atrim=duration={target}"]
-    command += ["-vf", "fps=30,tpad=stop_mode=clone:stop_duration=1,ass=captions.ass",
+    command += ["-vf", "fps=30,scale=1080:1920:flags=lanczos,setsar=1,"
+                "tpad=stop_mode=clone:stop_duration=1,ass=captions.ass",
                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-threads", "2",
                 "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-ar", "48000",
                 "-t", str(target), "-movflags", "+faststart",
