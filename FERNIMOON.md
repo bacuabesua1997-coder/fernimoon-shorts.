@@ -10,6 +10,14 @@ Bổ sung độc lập cho repository **`bacuabesua1997-coder/fernimoon-shorts.`
 4. **FFmpeg** crop giữa khung hình, dựng dọc **1080 × 1920, 30 fps**, gắn thương hiệu **FERNIMOON STUDIO**, đốt phụ đề động với từ đang đọc được tô vàng và phóng nhẹ. Âm thanh được cân âm lượng, xuất H.264/yuv420p + AAC, MP4 `faststart`.
 5. Kiểm tra lại kích thước, codec và thời lượng cả âm thanh lẫn hình ảnh bằng **ffprobe**, sau đó mới đưa video vào Artifacts.
 
+## Cải thiện Hook & Retention (v2)
+
+Workflow có thêm mục **story_style**: `mystery` (bí ẩn, mặc định), `history` (lịch sử), `science` (khoa học). Nhập chủ đề như trước; mọi chế độ vẫn viết và đọc tiếng Anh, vẫn chỉ sử dụng footage thật trên Pixabay và cùng bốn Secrets đã có. Không cần tạo JSON thủ công hoặc API mới.
+
+Gemini được hướng dẫn cân nhắc ba mở đầu trước khi chọn một câu hook **5–12 từ**, đưa thông tin cụ thể vào giây đầu; các cảnh sau hé lộ thông tin theo diễn biến và câu kết **5–18 từ** cung cấp lời giải có căn cứ hoặc nêu rõ điều chưa chắc chắn. Hook quá dài hoặc kết quá dài sẽ yêu cầu Gemini sửa lại một lần. Trong video, từ được đọc trong **3 giây đầu** có phụ đề lớn hơn. Đây là điều chỉnh cách kể và đồ họa, không phải cam kết tăng lượt xem. Chế độ `history` không gọi stock footage là tư liệu lưu trữ gốc.
+
+Tính năng này **không** tạo MV, nhạc hát Suno hay hoạt hình 2D/3D; các nội dung đó cần renderer/generator riêng. Nguồn audio vẫn từ ElevenLabs; dựng video vẫn FFmpeg và footage Pixabay.
+
 Chọn 35, 40 hoặc 45 giây trên Actions. Để giữ giọng tự nhiên, chỉ chỉnh tempo tối đa ±20%, đồng thời điều chỉnh tất cả timestamp phụ đề/cảnh theo cùng tỷ lệ. Nếu giọng đọc quá ngắn/dài, quy trình báo lỗi, không cắt mất lời đọc. CLI cho phép mọi số giây nguyên từ 35 đến 45.
 
 ## Thiết lập một lần trên GitHub
