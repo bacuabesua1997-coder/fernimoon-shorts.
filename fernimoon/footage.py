@@ -7,13 +7,15 @@ from pathlib import Path
 from urllib.parse import urlencode
 
 from .config import PipelineError
+from .relevance import target_location, visual_relevance
 from .http import MAX_VIDEO_BYTES, VideoDownloadError, download_video, request_json, validate_video_url
 
 SYNTHETIC = re.compile(r"\b(ai|cgi|animation|animated|render|rendered|3d|illustration|cartoon|synthetic)\b", re.I)
 MAX_CANDIDATES_PER_QUERY = 3
 
 
-def select_footage(hits: list, used: set[int]) -> dict | None:
+def select_footage(hits: list, used: set[int], *, query: str | None = None,
+                   location: str | None = None) -> dict | None:
     candidates = []
     for hit in hits:
         if not isinstance(hit, dict) or hit.get("type") != "film" or not isinstance(hit.get("id"), int):
@@ -22,6 +24,11 @@ def select_footage(hits: list, used: set[int]) -> dict | None:
             continue
         if hit.get("isAiGenerated") or hit.get("is_ai_generated") or hit.get("ai_generated"):
             continue
+        relevance_score, review = 0, ""
+        if query is not None:
+            accepted, relevance_score, review = visual_relevance(query, hit.get("tags", ""), location=location)
+            if not accepted:
+                continue
         if not isinstance(hit.get("duration"), (int, float)) or hit["duration"] < 3:
             continue
         variants = hit.get("videos", {})
@@ -41,13 +48,18 @@ def select_footage(hits: list, used: set[int]) -> dict | None:
                 continue
             # Prefer portrait clips and enough resolution; avoid needlessly downloading 4K.
             score = abs(width / height - 9 / 16) * 10 + abs(height - 1920) / 1920
-            candidates.append((score, hit, variant))
+            # For history, a matching visual subject outranks the prettier crop.
+            candidates.append((-relevance_score, score, hit, variant, review))
     if not candidates:
         return None
-    _, hit, variant = min(candidates, key=lambda item: item[0])
-    return {"id": hit["id"], "page_url": hit.get("pageURL", ""), "creator": hit.get("user", ""),
-            "tags": hit.get("tags", ""), "url": variant["url"], "width": variant["width"],
-            "height": variant["height"], "duration": hit["duration"], "type": "film"}
+    _, _, hit, variant, review = min(candidates, key=lambda item: (item[0], item[1]))
+    result = {"id": hit["id"], "page_url": hit.get("pageURL", ""), "creator": hit.get("user", ""),
+              "tags": hit.get("tags", ""), "url": variant["url"], "width": variant["width"],
+              "height": variant["height"], "duration": hit["duration"], "type": "film"}
+    if query is not None:
+        result["visual_review"] = review
+        result["authenticity"] = "stock_illustration_not_verified_archive"
+    return result
 
 
 def search(query: str, api_key: str, cache: Path, *, force_refresh: bool = False) -> list:
@@ -73,10 +85,12 @@ def search(query: str, api_key: str, cache: Path, *, force_refresh: bool = False
     return data["hits"]
 
 
-def collect_footage(scenes: list[dict], api_key: str, work: Path, cache: Path) -> list[dict]:
+def collect_footage(scenes: list[dict], api_key: str, work: Path, cache: Path, *,
+                    require_relevance: bool = False, historical_context: str = "") -> list[dict]:
     used: set[int] = set()
     failed: set[int] = set()
     refreshed: set[str] = set()
+    location = target_location(historical_context) if require_relevance else None
     sources = []
     for index, scene in enumerate(scenes):
         chosen = None
@@ -85,7 +99,8 @@ def collect_footage(scenes: list[dict], api_key: str, work: Path, cache: Path) -
         for query in scene["search_terms"]:
             hits = search(query, api_key, cache)
             for _ in range(MAX_CANDIDATES_PER_QUERY):
-                candidate = select_footage(hits, used | failed)
+                candidate = select_footage(hits, used | failed, query=query if require_relevance else None,
+                                           location=location)
                 if not candidate:
                     break
                 try:
@@ -104,7 +119,9 @@ def collect_footage(scenes: list[dict], api_key: str, work: Path, cache: Path) -
                         else:
                             # Same ID is allowed once more only if the API supplies a different,
                             # fully revalidated film URL. Otherwise switch to another clip.
-                            fresh = select_footage([h for h in hits if isinstance(h, dict) and h.get("id") == candidate["id"]], used | failed)
+                            fresh = select_footage(
+                                [h for h in hits if isinstance(h, dict) and h.get("id") == candidate["id"]],
+                                used | failed, query=query if require_relevance else None, location=location)
                             if fresh and fresh["url"] != candidate["url"]:
                                 try:
                                     download_video(fresh["url"], work / filename)
@@ -121,6 +138,11 @@ def collect_footage(scenes: list[dict], api_key: str, work: Path, cache: Path) -
             if chosen:
                 break
         if not chosen:
+            if require_relevance and last_error is None:
+                raise PipelineError(
+                    f"Pixabay: no context-relevant historical stock clip for scene {index + 1}. "
+                    "Unrelated countries or subjects were rejected. Use a filmable scene or "
+                    "licensed archival media rather than silently substituting unrelated footage.")
             if last_error is not None:
                 raise PipelineError(f"Pixabay: no downloadable real-film candidate for scene {index + 1} after bounded attempts. "
                                     f"Last CDN error: {last_error}") from None
