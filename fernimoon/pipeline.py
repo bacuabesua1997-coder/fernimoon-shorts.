@@ -51,7 +51,8 @@ def create_short(topic: str, config: Config, output: Path) -> Path:
                                        "start": sound["start"], "seconds": sound["seconds"],
                                        "after_scene": sound["after_scene"]},
                                    "words": [w.__dict__ for w in words]})
-    (work / "captions.ass").write_text(make_ass(words, config.duration), encoding="utf-8")
+    (work / "captions.ass").write_text(
+        make_ass(words, config.duration, sources, boundaries), encoding="utf-8")
     (work / "captions.srt").write_text(make_srt(words), encoding="utf-8")
     video = render(work, sources, boundaries, speed, config.duration, sound=sound)
     metadata = verify_output(video, config.duration)
@@ -63,7 +64,20 @@ def create_short(topic: str, config: Config, output: Path) -> Path:
                                      "sound_used": bool(sound), "sound_source": sound and {
                                          "source": sound["source"], "title": sound["title"],
                                          "page_url": sound["page_url"], "license": sound["license"]}})
-    (work / "upload.txt").write_text(script["title"] + "\n\n" + script["description"] + "\n", encoding="utf-8")
+    credits = ["", "VISUAL SOURCES (stock footage is not original-event archival footage):"]
+    for i, source in enumerate(sources, 1):
+        origin = source.get("source", "Unknown")
+        status = ("illustration" if source.get("kind") == "illustration"
+                  else "stock footage" if origin == "Pixabay" else "historic media candidate")
+        credits.append(f"{i}. {status} | {origin} | {source.get('title', source.get('page_url', ''))} | "
+                       f"{source.get('creator', '')} | {source.get('license', source.get('license_url', ''))} | "
+                       f"{source.get('page_url', '')}")
+    if sound:
+        credits.append("Sound moment: " + " | ".join(str(sound.get(x, "")) for x in
+                       ("title", "creator", "license", "page_url")))
+    (work / "upload.txt").write_text(
+        script["title"] + "\n\n" + script["description"] + "\n\n" +
+        "\n".join(credits) + "\n", encoding="utf-8")
     # Only a complete, validated video is copied to the downloadable delivery directory.
     delivery = work / "delivery"
     delivery.mkdir()
