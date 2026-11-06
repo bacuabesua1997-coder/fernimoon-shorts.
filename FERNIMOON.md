@@ -86,6 +86,20 @@ Trong chế độ `history`, hệ thống nay kiểm tra **tên địa điểm v
 
 **Giới hạn không được che giấu:** Đây chỉ là kiểm tra metadata Pixabay, chưa có thị giác AI xem từng clip, chưa có hệ thống tìm/chứng minh nguồn tư liệu gốc hoặc kiểm tra thực địa. Metadata người tải lên có thể thiếu hoặc sai; clip khớp từ khóa vẫn có thể không đúng thời kỳ. Không bao giờ mô tả footage stock là phim tư liệu thật của sự kiện. Nếu không tìm được clip phù hợp, pipeline báo lỗi **trước khi gọi ElevenLabs** thay vì dựng một video gây hiểu lầm. Muốn có phim/ảnh lưu trữ đích thực phải tích hợp nguồn archival có quyền sử dụng rõ ràng và kiểm duyệt bằng con người hoặc mô hình thị giác.
 
+## Tư liệu thật trước, minh họa sau; khoảng ngắt âm thanh (v3)
+
+FERNIMOON ưu tiên từng cảnh theo đúng thứ tự:
+
+1. **Wikimedia Commons:** tìm video/ảnh chụp đúng nhân vật, địa điểm, vật thể hoặc sự kiện bằng 1–2 truy vấn `archive_queries` do Gemini tạo. Chỉ tải các định dạng FFmpeg đọc được và file có metadata giấy phép **Public Domain / CC0**. Tư liệu vẫn phải kiểm tra thủ công: metadata hợp lệ **không chứng minh** phim/ảnh được quay đúng thời điểm lịch sử.
+2. **Pixabay Videos:** nếu không tìm được ảnh hoặc video Commons đủ liên quan, chọn footage quay thật có tags mô tả phù hợp. Trong chế độ lịch sử không dùng clip sai quốc gia hay sai chủ thể. Video stock hiện đại không được coi là tư liệu lưu trữ của sự kiện.
+3. **Minh họa:** chỉ khi hai tầng trên không có nguồn thích hợp, thử tìm ảnh vẽ/tranh minh họa công khai có giấy phép trên Commons. Cảnh này hiện chữ **ILLUSTRATION** trong video. Nếu cả ba tầng không đủ nguồn, pipeline dừng trước khi gọi ElevenLabs, không tự lấy nội dung không liên quan.
+
+**Âm thanh tạo điểm nhấn:** Gemini có thể đề xuất **một sound cue dài 1–2 giây**, ví dụ tiếng cánh quạt trực thăng hoặc tiếng nhiễu radio. Pipeline chỉ lấy âm thanh thật khi Commons có bản thu với metadata Public Domain / CC0, tải và xác nhận có audio hợp lệ. Nếu tìm được và giọng đọc có đủ khoảng hở giữa hai cảnh, FFmpeg tách lời dẫn thành hai phần, chèn âm thanh vào chính giữa **không có lời đọc đè lên**, đồng bộ chuyển cảnh và phụ đề. Tỷ lệ thời gian giữ tổng 35–45 giây. Khi không có file hoặc không có khoảng hở thích hợp, **không chèn khoảng lặng giả**.
+
+`sources.json` lưu nguồn, tác giả, giấy phép, mức ưu tiên, tính xác thực chưa kiểm chứng; `upload.txt` có danh sách nguồn để đưa vào phần mô tả. Nếu có sound cue, `sound_source.json` cho biết tên file, người tạo, trang gốc và giấy phép.
+
+**Giới hạn:** đây là cơ chế tìm kiếm bằng từ khóa/metadata, chưa có mô hình nhận diện hình ảnh kiểm chứng từng frame hay dịch vụ xác minh sử liệu. Kho lưu trữ có thể không trả về kết quả cho một chủ đề hiếm. Bộ lọc bản quyền bảo thủ sẽ bỏ qua nhiều ảnh CC BY / CC BY-SA nếu chưa có công cụ đáp ứng đầy đủ điều kiện cấp phép. Đây là giới hạn có chủ đích để tránh sử dụng sai quyền nội dung.
+
 ## Tư liệu thật và tính chính xác
 
 - Chỉ tải MP4 từ CDN của Pixabay, chỉ nhận kết quả loại `film`; loại các clip có nhãn/tag AI, CGI, animation, 3D, minh họa. Không thay thế video thiếu bằng ảnh AI.
