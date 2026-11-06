@@ -31,7 +31,9 @@ def groups(words: list[Word]) -> list[list[Word]]:
     return result
 
 
-def make_ass(words: list[Word], duration: float) -> str:
+def make_ass(words: list[Word], duration: float,
+             sources: list[dict] | None = None,
+             boundaries: list[float] | None = None) -> str:
     header = """[Script Info]
 ScriptType: v4.00+
 PlayResX: 1080
@@ -44,6 +46,7 @@ Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour,
 Style: Caption,DejaVu Sans,58,&H00FFFFFF,&H00FFFFFF,&H00101010,&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,100,160,390,1
 Style: Hook,DejaVu Sans,72,&H00FFFFFF,&H00FFFFFF,&H00101010,&H80000000,-1,0,0,0,100,100,0,0,1,5,3,2,90,130,430,1
 Style: Brand,DejaVu Sans,27,&H00FFFFFF,&H00FFFFFF,&H00202020,&H80000000,-1,0,0,0,100,100,2,0,1,2,1,8,80,80,190,1
+Style: SourceLabel,DejaVu Sans,32,&H00FFFFFF,&H00FFFFFF,&H00202020,&H80000000,-1,0,0,0,100,100,2,0,1,3,1,8,90,90,250,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -62,6 +65,11 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             text = r"{\fad(35,0)}" + " ".join(parts)
             style = "Hook" if word.start < min(duration, 3.0) else "Caption"
             lines.append(f"Dialogue: 1,{ass_time(word.start)},{ass_time(end)},{style},,0,0,0,,{text}")
+    if sources is not None and boundaries is not None:
+        for index, source in enumerate(sources):
+            if source.get("kind") == "illustration":
+                lines.append(f"Dialogue: 2,{ass_time(boundaries[index])},{ass_time(boundaries[index + 1])},"
+                             "SourceLabel,,0,0,0,,ILLUSTRATION")
     return header + "\n".join(lines) + "\n"
 
 

@@ -33,7 +33,14 @@ SCRIPT_SCHEMA = {
                 "narration": {"type": "STRING"},
                 "search_terms": {"type": "ARRAY", "minItems": 2, "maxItems": 3,
                                  "items": {"type": "STRING"}},
-            }, "required": ["narration", "search_terms"],
+                "archive_queries": {"type": "ARRAY", "minItems": 1, "maxItems": 2,
+                                    "items": {"type": "STRING"}},
+                "sound_cue": {"type": "OBJECT",
+                              "properties": {
+                                  "query": {"type": "STRING"},
+                                  "seconds": {"type": "NUMBER"}
+                              }, "required": ["query", "seconds"]},
+            }, "required": ["narration", "search_terms", "archive_queries"],
         }},
     }, "required": ["title", "description", "scenes"],
 }
@@ -53,6 +60,7 @@ def validate_script(data: dict, duration: int) -> dict:
     if not isinstance(scenes, list) or not 5 <= len(scenes) <= 7:
         raise PipelineError("Gemini: expected 5–7 scenes.")
     cleaned = []
+    sound_count = 0
     for scene in scenes:
         if not isinstance(scene, dict) or not isinstance(scene.get("narration"), str):
             raise PipelineError("Gemini: invalid scene narration.")
@@ -71,7 +79,24 @@ def validate_script(data: dict, duration: int) -> dict:
             raise PipelineError("Gemini: the opening hook must be 5–12 spoken words.")
         if len(cleaned) == len(scenes) - 1 and word_count(narration) > 18:
             raise PipelineError("Gemini: the closing payoff must be 5–18 spoken words.")
-        cleaned.append({"narration": narration, "search_terms": terms})
+        archive = scene.get("archive_queries", terms)
+        if (not isinstance(archive, list) or not 1 <= len(archive) <= 2
+                or any(not isinstance(q, str) or not re.fullmatch(r"[A-Za-z0-9 ,.'-]{3,100}", q)
+                       for q in archive)):
+            raise PipelineError("Gemini: provide one or two safe English archive search queries per scene.")
+        sound = scene.get("sound_cue")
+        if sound is not None:
+            sound_count += 1
+            if (sound_count > 1 or not 0 < len(cleaned) < len(scenes) - 1
+                    or not isinstance(sound, dict)
+                    or not isinstance(sound.get("query"), str)
+                    or not re.fullmatch(r"[A-Za-z0-9 -]{3,70}", sound["query"])
+                    or not isinstance(sound.get("seconds"), (int, float))
+                    or isinstance(sound.get("seconds"), bool)
+                    or not 1.0 <= sound["seconds"] <= 2.0):
+                raise PipelineError("Gemini: at most one 1–2 second factual sound cue in a middle scene.")
+        cleaned.append({"narration": narration, "search_terms": terms,
+                        "archive_queries": archive, "sound_cue": sound})
     count = sum(word_count(s["narration"]) for s in cleaned)
     lower, upper = int(duration * 2.1), int(duration * 2.6)
     if not lower <= count <= upper:
@@ -97,10 +122,19 @@ def generate_script(topic: str, config: Config) -> dict:
         "spoken English, without markdown, stage directions or URLs. Spell out numbers and abbreviations "
         "as they should be spoken. There must be five to seven scenes, each with five to thirty words. "
         f"The total narration MUST contain {lower} to {upper} words for about {config.duration} seconds. "
-        "For each scene provide two or three alternative short English Pixabay video searches for "
-        "literal, filmable subjects. Use only real filmed footage: no AI imagery, animation, CGI, "
-        "illustration, screenshots or generated video. Prefer concrete subjects available as stock "
-        "footage. Every scene's search terms must visually match the spoken content. "
+        "For EACH scene add archive_queries: one or two precise English search phrases for "
+        "actual historical images or motion footage of the named people, period, place or object "
+        "on Wikimedia Commons. Prioritize actual filmed/photographic material when available. "
+        "Also provide search_terms: two or three Pixabay stock-video phrases that visually "
+        "match the narration. Only when no appropriate real image or video is available may "
+        "the pipeline use a clearly marked historical illustration. Do not invent archives. "
+        "Optionally add sound_cue as {query: a specific real-world sound search, seconds: 1.5} "
+        "to AT MOST ONE middle scene (neither first nor last) when an authentic natural "
+        "sound would strongly clarify the event, such as radio static or helicopter rotors. "
+        "Do not request voices impersonating a historical person or fabricate recordings. "
+        "Do not request a cue if the moment does not naturally need one. The renderer will "
+        "insert it ONLY if suitably licensed sound is actually found; otherwise narration "
+        "will be continuous. Every scene's terms must visually match the spoken content. "
         "Footage may be an illustration of the story but must never be falsely identified "
         "as original recordings of historical events. Prefer concrete people, places, "
         "actions and objects rather than generic landscapes. Description should include "

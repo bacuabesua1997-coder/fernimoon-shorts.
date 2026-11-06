@@ -27,7 +27,7 @@ class RenderIntegrationTests(unittest.TestCase):
             run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=720x1280:rate=30",
                  "-t", "1", "-c:v", "libx264", "-preset", "ultrafast", "-threads", "2", str(fixture)])
 
-            def fake_footage(scenes, key, work, cache):
+            def fake_footage(scenes, config, work, cache, context):
                 sources = []
                 for index, _ in enumerate(scenes):
                     filename = f"footage-{index:02d}.mp4"
@@ -43,7 +43,8 @@ class RenderIntegrationTests(unittest.TestCase):
                 return [Word(text, 0.5 + i * step, 0.5 + (i + 0.8) * step) for i, text in enumerate(tokens)]
 
             with patch("fernimoon.pipeline.generate_script", return_value=example_script()), \
-                    patch("fernimoon.pipeline.collect_footage", side_effect=fake_footage), \
+                    patch("fernimoon.pipeline.collect_priority_media", side_effect=fake_footage), \
+                    patch("fernimoon.pipeline.find_sound", return_value=None), \
                     patch("fernimoon.pipeline.synthesize", side_effect=fake_voice):
                 delivery = create_short("Ocean life", config(), root / "output")
             self.assertEqual(verify_output(delivery / "FERNIMOON-STUDIO.mp4", 40)["height"], 1920)
