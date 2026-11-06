@@ -25,7 +25,15 @@ def create_short(topic: str, config: Config, output: Path) -> Path:
     write_json(work / "script.json", script)
     narration = " ".join(s["narration"] for s in script["scenes"])
     print("Finding real stock footage on Pixabay…", flush=True)
-    sources = collect_footage(script["scenes"], config.pixabay_key, work, output / "pixabay-cache")
+    if config.story_style == "history":
+        # Refuse obvious metadata mismatches before calling paid ElevenLabs.
+        # A positive match only means plausible stock illustration, not authentic archival footage.
+        context = topic + " " + " ".join(scene["narration"] for scene in script["scenes"])
+        sources = collect_footage(script["scenes"], config.pixabay_key, work,
+                                 output / "pixabay-cache", require_relevance=True,
+                                 historical_context=context)
+    else:
+        sources = collect_footage(script["scenes"], config.pixabay_key, work, output / "pixabay-cache")
     write_json(work / "sources.json", sources)
     print("Creating timestamped English narration with ElevenLabs…", flush=True)
     original_words = synthesize(narration, config, work / "narration.mp3")
