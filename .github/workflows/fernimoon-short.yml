@@ -1,0 +1,93 @@
+name: FERNIMOON STUDIO - Create Short
+
+on:
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: "Chủ đề video (kịch bản và giọng đọc sẽ bằng tiếng Anh)"
+        required: true
+        type: string
+      duration:
+        description: "Thời lượng video (giây)"
+        required: true
+        default: "40"
+        type: choice
+        options:
+          - "35"
+          - "40"
+          - "45"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fernimoon-render-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  create-short:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate configuration
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
+          SHORTS_TOPIC: ${{ inputs.topic }}
+        run: |
+          python - <<'PY'
+          import os
+          from fernimoon.config import Config, PipelineError, validate_topic
+          try:
+              Config.from_env()
+              validate_topic(os.environ['SHORTS_TOPIC'])
+          except PipelineError as error:
+              raise SystemExit(str(error)) from None
+          print('Configuration is present; credentials are not printed.')
+          PY
+      - name: Install video renderer and fonts
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg fonts-dejavu-core
+      - name: Restore Pixabay search cache (24-hour TTL enforced in code)
+        uses: actions/cache@v4
+        with:
+          path: output/fernimoon/pixabay-cache
+          key: pixabay-film-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: pixabay-film-v1-
+      - name: Test pipeline without calling paid APIs
+        run: python -m unittest discover -s fernimoon/tests -v
+      - name: Generate English Short
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          ELEVENLABS_MODEL: ${{ vars.ELEVENLABS_MODEL }}
+          SHORTS_TOPIC: ${{ inputs.topic }}
+          SHORTS_DURATION: ${{ inputs.duration }}
+        # Treat topic as an environment value, never as interpolated shell code.
+        run: python -m fernimoon --duration "$SHORTS_DURATION"
+      - name: Download MP4 and companion files
+        uses: actions/upload-artifact@v4
+        with:
+          name: FERNIMOON-STUDIO-${{ github.run_number }}
+          path: output/fernimoon/short-*/delivery/*
+          if-no-files-found: error
+          retention-days: 14
+      - name: Add download instructions
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          ## FERNIMOON STUDIO
+          Video đã hoàn tất: **1080 × 1920, H.264/AAC, phụ đề động theo giọng đọc**.
+          Mở **Artifacts** ở cuối trang lần chạy này, tải gói `FERNIMOON-STUDIO-*` và giải nén MP4.
+          Gói cũng có phụ đề SRT/ASS, kịch bản, tiêu đề và nguồn video Pixabay.
+          Xem lại nội dung, phần crop dọc và nguồn tư liệu trước khi đăng YouTube.
+          EOF

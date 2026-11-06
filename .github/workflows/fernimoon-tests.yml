@@ -1,0 +1,33 @@
+name: FERNIMOON STUDIO - Tests
+
+on:
+  push:
+    paths:
+      - "fernimoon/**"
+      - ".github/workflows/fernimoon-*.yml"
+  pull_request:
+    paths:
+      - "fernimoon/**"
+      - ".github/workflows/fernimoon-*.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg fonts-dejavu-core
+      - name: Unit tests and full 40-second render smoke test (no API keys)
+        env:
+          FERNIMOON_RENDER_TEST: "1"
+        run: python -m unittest discover -s fernimoon/tests -v
