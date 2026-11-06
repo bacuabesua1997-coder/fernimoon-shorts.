@@ -67,12 +67,17 @@ def synthesize(narration: str, config: Config, destination: Path) -> list[Word]:
 def retime(words: list[Word], audio_duration: float, target: float) -> tuple[list[Word], float]:
     if not math.isfinite(audio_duration) or audio_duration <= 0:
         raise PipelineError("ElevenLabs: invalid narration duration.")
-    speed = audio_duration / target
-    if not 0.8 <= speed <= 1.2:
-        raise PipelineError("Narration is too short/long for natural pacing (maximum 20% tempo change). "
-                            "Try another voice or regenerate the script; no truncated speech was exported.")
+    if not math.isfinite(target) or target <= 0:
+        raise PipelineError("Invalid video duration.")
     if any(w.end > audio_duration + 0.08 for w in words):
         raise PipelineError("ElevenLabs: timestamps extend past the narration audio.")
+    # Shorter voice tracks are common even with a validated word count. Never
+    # slow a voice beyond 20%; preserve the words and let FFmpeg pad the tail
+    # with silence while keeping the video and subtitle timeline intact.
+    speed = max(0.8, audio_duration / target)
+    if speed > 1.2:
+        raise PipelineError("Narration is too long for natural pacing (maximum 20% speed-up). "
+                            "Regenerate a shorter script; no speech was truncated.")
     return [Word(w.text, w.start / speed, min(w.end / speed, target)) for w in words], speed
 
 

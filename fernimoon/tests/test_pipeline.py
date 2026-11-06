@@ -227,9 +227,15 @@ class SpeechTests(unittest.TestCase):
         self.assertEqual(scene_boundaries([{"narration": "Hello"}, {"narration": "world"}], updated, 40),
                          [0.0, 20 / 1.1, 40])
 
-    def test_unnatural_tempo_and_out_of_audio_alignment_fail(self):
-        with self.assertRaises(PipelineError):
-            retime([Word("Hello", 0, 10)], 20, 40)
+    def test_short_narration_is_padded_not_unaturally_stretched(self):
+        words, speed = retime([Word("Hello", 0, 10), Word("world", 18, 20)], 20, 40)
+        self.assertAlmostEqual(speed, 0.8)
+        self.assertAlmostEqual(words[-1].end, 25)
+        self.assertLess(words[-1].end, 40)
+
+    def test_long_narration_and_out_of_audio_alignment_fail(self):
+        with self.assertRaisesRegex(PipelineError, "too long"):
+            retime([Word("Hello", 0, 50)], 50, 40)
         with self.assertRaises(PipelineError):
             retime([Word("Hello", 0, 45)], 40, 40)
 
