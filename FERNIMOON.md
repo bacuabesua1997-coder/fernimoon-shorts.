@@ -78,6 +78,14 @@ Gói Artifact giữ **14 ngày**, chứa:
 
 Hệ thống **tạo file để bạn tải xuống**, chưa tự đăng lên YouTube. Không yêu cầu YouTube OAuth. Các video đang chạy được xếp hàng; không hủy một lần chạy đang trả phí TTS để bắt đầu lần mới. GitHub concurrency chỉ giữ một lần chạy hoạt động và một lần chờ; tránh gửi nhiều chủ đề cùng lúc nếu muốn giữ tất cả.
 
+## Kiểm tra khớp tư liệu lịch sử (nâng cấp sau video #9)
+
+Video #9 dùng một số clip Pixabay không liên quan trực tiếp tới lời kể, như đền chùa Kyoto/Osaka và thành phố Thượng Hải cho sự kiện Chiến tranh Việt Nam. Đó là footage stock minh họa, **không phải tài liệu lưu trữ lịch sử**.
+
+Trong chế độ `history`, hệ thống nay kiểm tra **tên địa điểm và nhãn nội dung (tags) của từng clip trước khi tải**. Nếu một video bị gắn nhãn ở quốc gia khác với bối cảnh đang kể, hoặc chỉ trùng từ chung chung mà không có chủ thể phù hợp, sẽ không được chọn. Các lỗi đối tượng rõ ràng như máy quay đĩa than thay máy ghi băng cũng bị loại. Khi có nhiều lựa chọn, độ khớp nội dung được ưu tiên hơn tỷ lệ khung hình. `sources.json` ghi `visual_review` và `authenticity: stock_illustration_not_verified_archive`.
+
+**Giới hạn không được che giấu:** Đây chỉ là kiểm tra metadata Pixabay, chưa có thị giác AI xem từng clip, chưa có hệ thống tìm/chứng minh nguồn tư liệu gốc hoặc kiểm tra thực địa. Metadata người tải lên có thể thiếu hoặc sai; clip khớp từ khóa vẫn có thể không đúng thời kỳ. Không bao giờ mô tả footage stock là phim tư liệu thật của sự kiện. Nếu không tìm được clip phù hợp, pipeline báo lỗi **trước khi gọi ElevenLabs** thay vì dựng một video gây hiểu lầm. Muốn có phim/ảnh lưu trữ đích thực phải tích hợp nguồn archival có quyền sử dụng rõ ràng và kiểm duyệt bằng con người hoặc mô hình thị giác.
+
 ## Tư liệu thật và tính chính xác
 
 - Chỉ tải MP4 từ CDN của Pixabay, chỉ nhận kết quả loại `film`; loại các clip có nhãn/tag AI, CGI, animation, 3D, minh họa. Không thay thế video thiếu bằng ảnh AI.
