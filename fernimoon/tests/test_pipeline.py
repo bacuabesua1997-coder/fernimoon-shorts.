@@ -19,7 +19,7 @@ from fernimoon.speech import Word, alignment_words, retime, scene_boundaries, sy
 
 def example_script():
     texts = [
-        "The ocean hides a world of extraordinary animals beneath its calm and glittering blue surface.",
+        "Beneath the ocean surface, extraordinary animals hide in plain sight.",
         "Sea turtles travel across vast stretches of water, returning to familiar beaches to lay eggs.",
         "Coral reefs provide shelter for colorful fish and many other creatures that depend on them.",
         "Farther from shore, dolphins communicate through sounds while moving together in groups through the waves.",
@@ -65,6 +65,15 @@ class ConfigurationTests(unittest.TestCase):
         with self.assertRaises(PipelineError):
             Config.from_env()
 
+    @patch.dict(os.environ, {"GEMINI_API_KEY": "key", "PIXABAY_API_KEY": "key",
+                             "ELEVENLABS_API_KEY": "key", "ELEVENLABS_VOICE_ID": "voice123",
+                             "SHORTS_STYLE": "history"}, clear=True)
+    def test_history_style_config_and_invalid_style(self):
+        self.assertEqual(Config.from_env().story_style, "history")
+        os.environ["SHORTS_STYLE"] = "unsafe"
+        with self.assertRaisesRegex(PipelineError, "SHORTS_STYLE"):
+            Config.from_env()
+
     def test_topic_constraints(self):
         self.assertEqual(validate_topic("  Ocean\n life "), "Ocean life")
         for value in ("", "a" * 301):
@@ -75,6 +84,16 @@ class ConfigurationTests(unittest.TestCase):
 class ScriptTests(unittest.TestCase):
     def test_accepts_english_script_with_bounded_length(self):
         self.assertEqual(len(validate_script(example_script(), 40)["scenes"]), 6)
+
+    def test_opening_hook_and_payoff_have_bounded_word_counts(self):
+        data = example_script()
+        data["scenes"][0]["narration"] = "The story begins with an unusually long introduction that reveals very little about the key point of the topic."
+        with self.assertRaisesRegex(PipelineError, "opening hook"):
+            validate_script(data, 40)
+        data = example_script()
+        data["scenes"][-1]["narration"] = "One two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty."
+        with self.assertRaisesRegex(PipelineError, "closing payoff"):
+            validate_script(data, 40)
 
     def test_rejects_empty_long_wrong_language_and_missing_queries(self):
         bad_scripts = []
@@ -96,6 +115,19 @@ class ScriptTests(unittest.TestCase):
         self.assertNotIn("secret-gemini", args[0])
         self.assertEqual(kwargs["headers"]["x-goog-api-key"], "secret-gemini")
         self.assertEqual(kwargs["body"]["generationConfig"]["responseMimeType"], "application/json")
+        prompt = kwargs["body"]["systemInstruction"]["parts"][0]["text"]
+        self.assertIn("FIVE TO TWELVE", prompt)
+        self.assertIn("satisfying", prompt.lower())
+
+    @patch("fernimoon.script.request_json")
+    def test_story_style_changes_prompt_without_changing_api(self, request):
+        request.return_value = {"candidates": [{"finishReason": "STOP", "content": {
+            "parts": [{"text": json.dumps(example_script())}]}}]}
+        from dataclasses import replace
+        generate_script("A documented historical event", replace(config(), story_style="history"))
+        prompt = request.call_args.kwargs["body"]["systemInstruction"]["parts"][0]["text"]
+        self.assertIn("historical event", prompt)
+        self.assertIn("modern stock footage", prompt)
 
     @patch("fernimoon.script.request_json", return_value={"candidates": [{"finishReason": "MAX_TOKENS"}]})
     def test_blocked_or_truncated_script_fails_after_two_attempts(self, request):
@@ -220,6 +252,8 @@ class CaptionTests(unittest.TestCase):
         self.assertIn("FERNIMOON STUDIO", ass)
         self.assertIn("0:00:01.25", ass)
         self.assertIn(r"\c&H00E8FF&", ass)
+        self.assertIn("Style: Hook", ass)
+        self.assertIn("0:00:01.25,0:00:01.95,Hook", ass)
         self.assertIn("00:00:01,250 --> 00:00:02,600", make_srt(words))
         self.assertNotIn(r"\pos", escape_ass(r"{\pos(0,0)}oops"))
 

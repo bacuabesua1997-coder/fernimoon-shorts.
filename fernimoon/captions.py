@@ -42,6 +42,7 @@ ScaledBorderAndShadow: yes
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 Style: Caption,DejaVu Sans,58,&H00FFFFFF,&H00FFFFFF,&H00101010,&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,100,160,390,1
+Style: Hook,DejaVu Sans,72,&H00FFFFFF,&H00FFFFFF,&H00101010,&H80000000,-1,0,0,0,100,100,0,0,1,5,3,2,90,130,430,1
 Style: Brand,DejaVu Sans,27,&H00FFFFFF,&H00FFFFFF,&H00202020,&H80000000,-1,0,0,0,100,100,2,0,1,2,1,8,80,80,190,1
 
 [Events]
@@ -59,7 +60,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 parts.append(color + escape_ass(item.text))
             # Fade plus a moving word highlight; actual onsets come from the speech provider.
             text = r"{\fad(35,0)}" + " ".join(parts)
-            lines.append(f"Dialogue: 1,{ass_time(word.start)},{ass_time(end)},Caption,,0,0,0,,{text}")
+            style = "Hook" if word.start < min(duration, 3.0) else "Caption"
+            lines.append(f"Dialogue: 1,{ass_time(word.start)},{ass_time(end)},{style},,0,0,0,,{text}")
     return header + "\n".join(lines) + "\n"
 
 

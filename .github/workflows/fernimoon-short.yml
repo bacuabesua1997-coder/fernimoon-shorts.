@@ -16,6 +16,15 @@ on:
           - "35"
           - "40"
           - "45"
+      story_style:
+        description: "Phong cách nội dung: bí ẩn / lịch sử / khoa học"
+        required: true
+        default: mystery
+        type: choice
+        options:
+          - mystery
+          - history
+          - science
 
 permissions:
   contents: read
@@ -40,6 +49,7 @@ jobs:
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
           SHORTS_TOPIC: ${{ inputs.topic }}
+          SHORTS_STYLE: ${{ inputs.story_style }}
         run: |
           python - <<'PY'
           import os
@@ -73,6 +83,7 @@ jobs:
           ELEVENLABS_MODEL: ${{ vars.ELEVENLABS_MODEL }}
           SHORTS_TOPIC: ${{ inputs.topic }}
           SHORTS_DURATION: ${{ inputs.duration }}
+          SHORTS_STYLE: ${{ inputs.story_style }}
         # Treat topic as an environment value, never as interpolated shell code.
         run: python -m fernimoon --duration "$SHORTS_DURATION"
       - name: Download MP4 and companion files
@@ -87,6 +98,7 @@ jobs:
           cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
           ## FERNIMOON STUDIO
           Video đã hoàn tất: **1080 × 1920, H.264/AAC, phụ đề động theo giọng đọc**.
+          Phong cách mới: `mystery`, `history` hoặc `science`. Hook mở đầu ngắn, nội dung xây dựng cao trào và kết thúc rõ ràng.
           Mở **Artifacts** ở cuối trang lần chạy này, tải gói `FERNIMOON-STUDIO-*` và giải nén MP4.
           Gói cũng có phụ đề SRT/ASS, kịch bản, tiêu đề và nguồn video Pixabay.
           Xem lại nội dung, phần crop dọc và nguồn tư liệu trước khi đăng YouTube.

@@ -41,6 +41,7 @@ def create_short(topic: str, config: Config, output: Path) -> Path:
     write_json(work / "manifest.json", {"channel": "FERNIMOON STUDIO", "topic": topic, **metadata,
                                      "gemini_model": config.gemini_model, "voice_id": config.voice_id,
                                      "elevenlabs_model": config.elevenlabs_model,
+                                     "story_style": config.story_style,
                                      "footage_policy": "Pixabay film only; no image or video generation"})
     (work / "upload.txt").write_text(script["title"] + "\n\n" + script["description"] + "\n", encoding="utf-8")
     # Only a complete, validated video is copied to the downloadable delivery directory.

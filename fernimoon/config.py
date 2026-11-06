@@ -17,6 +17,7 @@ class Config:
     gemini_model: str = "gemini-2.5-flash"
     elevenlabs_model: str = "eleven_multilingual_v2"
     duration: int = 40
+    story_style: str = "mystery"
 
     @classmethod
     def from_env(cls, duration: int = 40) -> "Config":
@@ -30,10 +31,13 @@ class Config:
         voice = values["ELEVENLABS_VOICE_ID"]
         gemini = os.environ.get("GEMINI_MODEL", "").strip() or "gemini-2.5-flash"
         eleven = os.environ.get("ELEVENLABS_MODEL", "").strip() or "eleven_multilingual_v2"
+        style = os.environ.get("SHORTS_STYLE", "mystery").strip().lower() or "mystery"
+        if style not in ("mystery", "history", "science"):
+            raise PipelineError("SHORTS_STYLE must be mystery, history or science.")
         for label, value in (("voice ID", voice), ("Gemini model", gemini), ("ElevenLabs model", eleven)):
             if not re.fullmatch(r"[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*", value):
                 raise PipelineError(f"Invalid {label}; use an ID, not a URL.")
-        return cls(values[names[0]], values[names[1]], values[names[2]], voice, gemini, eleven, duration)
+        return cls(values[names[0]], values[names[1]], values[names[2]], voice, gemini, eleven, duration, style)
 
 
 def validate_topic(topic: str) -> str:
