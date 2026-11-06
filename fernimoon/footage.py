@@ -86,8 +86,9 @@ def search(query: str, api_key: str, cache: Path, *, force_refresh: bool = False
 
 
 def collect_footage(scenes: list[dict], api_key: str, work: Path, cache: Path, *,
-                    require_relevance: bool = False, historical_context: str = "") -> list[dict]:
-    used: set[int] = set()
+                    require_relevance: bool = False, historical_context: str = "",
+                    used_ids: set[int] | None = None, scene_offset: int = 0) -> list[dict]:
+    used: set[int] = used_ids if used_ids is not None else set()
     failed: set[int] = set()
     refreshed: set[str] = set()
     location = target_location(historical_context) if require_relevance else None
@@ -95,7 +96,7 @@ def collect_footage(scenes: list[dict], api_key: str, work: Path, cache: Path, *
     for index, scene in enumerate(scenes):
         chosen = None
         last_error = None
-        filename = f"footage-{index:02d}.mp4"
+        filename = f"footage-{index + scene_offset:02d}.mp4"
         for query in scene["search_terms"]:
             hits = search(query, api_key, cache)
             for _ in range(MAX_CANDIDATES_PER_QUERY):
@@ -148,7 +149,9 @@ def collect_footage(scenes: list[dict], api_key: str, work: Path, cache: Path, *
                                     f"Last CDN error: {last_error}") from None
             raise PipelineError(f"Pixabay: no suitable real-film candidate for scene {index + 1}. Try a more filmable topic.")
         used.add(chosen["id"])
-        sources.append({**chosen, "scene": index + 1, "file": filename,
+        sources.append({**chosen, "kind": "video", "source": "Pixabay",
+                        "authenticity": chosen.get("authenticity", "stock_illustration_not_verified_archive"),
+                        "scene": index + scene_offset + 1, "file": filename,
                         "license_url": "https://pixabay.com/service/license-summary/"})
         print(f"Footage {index + 1}/{len(scenes)} downloaded.", flush=True)
     return sources
