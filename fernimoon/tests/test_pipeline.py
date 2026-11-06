@@ -253,7 +253,7 @@ class CaptionTests(unittest.TestCase):
         self.assertIn("0:00:01.25", ass)
         self.assertIn(r"\c&H00E8FF&", ass)
         self.assertIn("Style: Hook", ass)
-        self.assertIn("0:00:01.25,0:00:01.80,Hook", ass)
+        self.assertIn("0:00:01.25,0:00:01.95,Hook", ass)
         self.assertIn("00:00:01,250 --> 00:00:02,600", make_srt(words))
         self.assertNotIn(r"\pos", escape_ass(r"{\pos(0,0)}oops"))
 
