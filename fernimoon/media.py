@@ -64,7 +64,8 @@ def verify_output(path: Path, target: float) -> dict:
     return {"width": 1080, "height": 1920, "duration": duration, "video_codec": "h264", "audio_codec": "aac"}
 
 
-def render(work: Path, sources: list[dict], boundaries: list[float], speed: float, target: float,\n           sound: dict | None = None) -> Path:
+def render(work: Path, sources: list[dict], boundaries: list[float], speed: float, target: float,
+           sound: dict | None = None) -> Path:
     # Quantize all shared scene boundaries onto the same 30 fps timeline to prevent cumulative drift.
     frames = [round(t * 30) for t in boundaries]
     segments = []
