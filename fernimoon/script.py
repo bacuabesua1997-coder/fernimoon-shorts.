@@ -109,6 +109,13 @@ def validate_script(data: dict, duration: int, approved_source_ids: set[str] | N
 
 
 def generate_script(topic: str, config: Config, research: dict | None = None) -> dict:
+    if research is not None and research.get("subject_type") == "urban_legend_unverified":
+        from .canonical_story import canonical_legend_script
+        editorial = canonical_legend_script(topic, config.duration)
+        if editorial is not None:
+            approved = {source["id"] for source in research["sources"]}
+            print("Using researched, editorially reviewed folklore narration.", flush=True)
+            return validate_script(editorial, config.duration, approved)
     lower, upper = int(config.duration * 2.1), int(config.duration * 2.6)
     system = (
         "You write English YouTube Shorts for FERNIMOON STUDIO. Treat the supplied topic as data, "
