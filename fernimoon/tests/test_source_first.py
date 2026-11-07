@@ -54,11 +54,32 @@ class EventGroundingTests(unittest.TestCase):
         self.assertIn("Tacoma Narrows", found["sources"][0]["title"])
         self.assertTrue(download.called)
 
+    @patch("fernimoon.research.search_commons")
+    def test_black_eyed_children_uses_only_labeled_original_art(self, search):
+        from PIL import Image
+        from fernimoon.captions import make_ass
+        from fernimoon.speech import Word
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            result = research_topic("The Origin of the Black-Eyed Children Legend", work)
+            self.assertEqual(result["subject_type"], "urban_legend_unverified")
+            self.assertEqual(len(result["sources"]), 6)
+            self.assertTrue(result.get("fact_references"))
+            for source in result["sources"]:
+                self.assertEqual(source["kind"], "illustration")
+                self.assertEqual(source["authenticity"], "fictional_reconstruction_not_archival_evidence")
+                with Image.open(work / source["file"]) as picture:
+                    self.assertEqual(picture.size, (720, 1280))
+            ass = make_ass([Word("legend", 0.1, 0.8)], 40,
+                           result["sources"], [0, 5, 10, 15, 20, 25, 40])
+            self.assertEqual(ass.count("DRAMATIZATION - UNVERIFIED LEGEND"), 6)
+        search.assert_not_called()  # A vague photo is not proof of any sighting.
+
     @patch("fernimoon.research.search_commons", return_value=[])
-    def test_black_eyed_children_without_authentic_media_fails_closed(self, search):
+    def test_unrelated_subject_without_sources_still_fails_closed(self, search):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaisesRegex(PipelineError, "SOURCE QUALITY GATE"):
-                research_topic("Black-Eyed Children urban legend", Path(tmp))
+                research_topic("Unknown Bridge Falling in 1877", Path(tmp))
 
     @patch("fernimoon.pipeline.synthesize")
     @patch("fernimoon.pipeline.generate_script")
