@@ -78,6 +78,20 @@ def relevance_to_event(topic: str, asset: dict) -> tuple[bool, int]:
 
 
 def research_topic(topic: str, work: Path, *, max_sources: int = 3) -> dict:
+    # The Black-Eyed Children story has a documented history of *retellings*
+    # but no authenticated recording of a supernatural encounter. In this
+    # special case, the historically honest image is a labeled dramatization,
+    # not a random photograph of a stranger with edited eyes.
+    from .original_art import generate_reconstruction, is_black_eyed_children, LEGEND_REFERENCES
+    if is_black_eyed_children(topic):
+        sources = generate_reconstruction(work)
+        print("Research: unverified modern legend; generating original DRAMATIZATION scenes.", flush=True)
+        return {
+            "topic": topic, "searched": ["No authenticated sighting footage is known"],
+            "sources": sources, "fact_references": LEGEND_REFERENCES,
+            "quality_note": "Six original illustrations: NOT an actual sighting, witness photograph or archival video.",
+            "subject_type": "urban_legend_unverified",
+        }
     candidates = {}
     successful_requests = 0
     for query in research_queries(topic):

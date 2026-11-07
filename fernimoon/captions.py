@@ -68,8 +68,11 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     if sources is not None and boundaries is not None:
         for index, source in enumerate(sources):
             if source.get("kind") == "illustration":
+                label = ("DRAMATIZATION - UNVERIFIED LEGEND"
+                         if source.get("authenticity") == "fictional_reconstruction_not_archival_evidence"
+                         else "ILLUSTRATION")
                 lines.append(f"Dialogue: 2,{ass_time(boundaries[index])},{ass_time(boundaries[index + 1])},"
-                             "SourceLabel,,0,0,0,,ILLUSTRATION")
+                             f"SourceLabel,,0,0,0,,{label}")
     return header + "\n".join(lines) + "\n"
 
 
