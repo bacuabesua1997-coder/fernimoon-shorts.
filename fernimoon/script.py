@@ -159,6 +159,12 @@ def generate_script(topic: str, config: Config, research: dict | None = None) ->
             "Acknowledge that no independently verified supernatural evidence exists. "
             "Every visual is a fictional DRAMATIZATION, never original footage, a genuine "
             "eyewitness photo or an authentic 1990s document. "
+            "Use EXACTLY SIX chronological scenes. Scene 1 must use source_id R1 "
+            "(empty night parking lot), scene 2 R2 (children approaching car), "
+            "scene 3 R3 (request at window), scene 4 R4 (reported all-black eyes), "
+            "scene 5 R5 (story spreads online), and scene 6 R6 (driving away). "
+            "Align the narrated subject to the shown scene. Preserve chronology "
+            "but frame each reported encounter detail as an allegation. "
             "Do not invent police reports, fatalities, photographs, witnesses or quotes. "
         )
     if research is not None:
@@ -183,6 +189,9 @@ def generate_script(topic: str, config: Config, research: dict | None = None) ->
     if research is not None:
         scene_schema = request_schema["properties"]["scenes"]["items"]
         scene_schema["required"] = [*scene_schema["required"], "source_id"]
+        if research.get("subject_type") == "urban_legend_unverified":
+            request_schema["properties"]["scenes"]["minItems"] = 6
+            request_schema["properties"]["scenes"]["maxItems"] = 6
     feedback = ""
     for attempt in range(2):
         response = request_json(
@@ -201,7 +210,13 @@ def generate_script(topic: str, config: Config, research: dict | None = None) ->
             if candidate.get("finishReason") != "STOP":
                 raise PipelineError("Gemini: incomplete or blocked response; try another topic/model.")
             raw = "".join(part.get("text", "") for part in candidate["content"]["parts"] if not part.get("thought"))
-            return validate_script(json.loads(raw), config.duration, approved)
+            script = validate_script(json.loads(raw), config.duration, approved)
+            if research is not None and research.get("subject_type") == "urban_legend_unverified":
+                if [scene.get("source_id") for scene in script["scenes"]] != [
+                        f"R{i}" for i in range(1, 7)]:
+                    raise PipelineError(
+                        "Gemini: dramatized legend requires six scenes matched to R1–R6 in order.")
+            return script
         except (KeyError, IndexError, TypeError, ValueError):
             error = "Gemini: missing or malformed structured script."
         except PipelineError as exc:
