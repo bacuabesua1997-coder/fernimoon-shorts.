@@ -5,7 +5,8 @@ from pathlib import Path
 
 from .captions import make_ass, make_srt
 from .config import Config, PipelineError, validate_topic
-from .media_sources import collect_priority_media
+from .media_sources import select_researched_media
+from .research import research_topic
 from .sound import find_sound, retime_with_sound
 from .media import media_duration, preflight, probe, render, verify_output
 from .script import generate_script
@@ -21,14 +22,14 @@ def create_short(topic: str, config: Config, output: Path) -> Path:
     preflight()
     output.mkdir(parents=True, exist_ok=True)
     work = Path(tempfile.mkdtemp(prefix="short-", dir=output)).resolve()
-    print("Writing English script with Gemini…", flush=True)
-    script = generate_script(topic, config)
+    print("SOURCE-FIRST: researching event-specific licensed video and photos…", flush=True)
+    research = research_topic(topic, work)
+    write_json(work / "research.json", research)
+    print("Writing English script with Gemini using only researched sources…", flush=True)
+    script = generate_script(topic, config, research)
     write_json(work / "script.json", script)
     narration = " ".join(s["narration"] for s in script["scenes"])
-    print("Finding real photos or video before illustrative stock footage…", flush=True)
-    context = topic + " " + " ".join(scene["narration"] for scene in script["scenes"])
-    sources = collect_priority_media(script["scenes"], config, work,
-                                     output / "pixabay-cache", context)
+    sources = select_researched_media(script["scenes"], research, work)
     write_json(work / "sources.json", sources)
     print("Checking for a licensed sound that deserves a narration pause…", flush=True)
     sound = find_sound(script["scenes"], work)
@@ -60,7 +61,8 @@ def create_short(topic: str, config: Config, output: Path) -> Path:
                                      "gemini_model": config.gemini_model, "voice_id": config.voice_id,
                                      "elevenlabs_model": config.elevenlabs_model,
                                      "story_style": config.story_style,
-                                     "footage_policy": "licensed Wikimedia real media, contextual Pixabay film, then Wikimedia illustration",
+                                     "footage_policy": "SOURCE FIRST: Wikimedia event-specific photo/film or clearly labeled illustration; no generic stock fallback",
+                                     "research_source_count": len(research["sources"]),
                                      "sound_used": bool(sound), "sound_source": sound and {
                                          "source": sound["source"], "title": sound["title"],
                                          "page_url": sound["page_url"], "license": sound["license"]}})
@@ -86,7 +88,7 @@ def create_short(topic: str, config: Config, output: Path) -> Path:
             "title", "page_url", "creator", "license", "license_url",
             "source_query", "seconds", "after_scene", "start")})
     files = [video.name, "captions.srt", "captions.ass", "script.json", "sources.json",
-             "timing.json", "manifest.json", "upload.txt"]
+             "research.json", "timing.json", "manifest.json", "upload.txt"]
     if sound:
         files.append("sound_source.json")
     for name in files:

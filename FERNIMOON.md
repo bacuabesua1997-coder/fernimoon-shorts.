@@ -1,3 +1,11 @@
+## Source-first documentary workflow (v4)
+
+For videos like Tacoma Narrows (1940), the previous pipeline created a script first, then accepted loosely matching Pixabay tags (foreign bridges, models, galaxy or highways). **This is disabled in production.** Before Gemini or ElevenLabs is contacted, `fernimoon.research.research_topic` searches Wikimedia Commons for the *named event itself*, requiring event/name/date matches, reuse-rights metadata and a downloadable film or photograph. Real film is preferred; one archived 2-minute film may appear in several Short scenes with different source offsets. Historic `.ogv`/`application/ogg` video, including 640×480 material, is supported.
+
+When no event-specific real footage/photo is available, research may use only a matching **public-domain/CC0 illustration**, which is visibly labeled `ILLUSTRATION`. If neither exists, the job ends with `SOURCE QUALITY GATE` **before paid AI narration**. No random “cinematic” stock B-roll may be substituted. Thus some subjects (especially modern online legends with no authentic available photography) will fail safely until suitable licensed art is available.
+
+Gemini receives the research list and must cite an existing `source_id` in every scene; `research.json` and `sources.json` record provenance for review. Original landscape documentary images are letterboxed in 9:16 to avoid cropping out the event itself. **Limitations:** Commons uploader descriptions and license metadata are not independent historical authentication. A source name may match an event but not depict every spoken claim; editorial review remains necessary before publication. This workflow does not use an image-captioning visual model or original news/archive licensing connector. For new external archive sources, confirm their rights separately.
+
 # FERNIMOON STUDIO — tạo YouTube Shorts từ điện thoại
 
 Bổ sung độc lập cho repository **`bacuabesua1997-coder/fernimoon-shorts.`** (có dấu chấm cuối). Toàn bộ mã TypeScript, HyperFrames, tài liệu và cấu hình gốc được giữ nguyên. Các lệnh `npm run pipeline`, `npm test` cũ vẫn hoạt động như trước. Hệ thống mới chạy bằng **Python 3.12 + FFmpeg**, không cần cài thêm thư viện Python hoặc Node.

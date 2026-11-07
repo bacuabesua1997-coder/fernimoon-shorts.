@@ -77,7 +77,8 @@ def render(work: Path, sources: list[dict], boundaries: list[float], speed: floa
         source_path = work / source["file"]
         meta = probe(source_path)
         stream = next((s for s in meta.get("streams", []) if s.get("codec_type") == "video"), {})
-        if not stream or min(stream.get("width", 0), stream.get("height", 0)) < 540:
+        min_size = 240 if source.get("source") == "Wikimedia Commons" else 540
+        if not stream or min(stream.get("width", 0), stream.get("height", 0)) < min_size:
             raise PipelineError(f"Media scene {index + 1} lacks an adequate visual stream.")
         kind = source.get("kind", "video")
         segment = f"segment-{index:02d}.mp4"
@@ -86,17 +87,21 @@ def render(work: Path, sources: list[dict], boundaries: list[float], speed: floa
         if kind in ("image", "illustration"):
             # An archival still receives gentle camera motion; it remains a labeled photo/illustration.
             base += ["-loop", "1", "-framerate", "30", "-i", source["file"]]
-            visual_filter = ("scale=1080:1920:force_original_aspect_ratio=increase,"
-                             "crop=1080:1920,setsar=1,"
-                             "zoompan=z='min(zoom+0.00020,1.06)':"
+            # Preserve the entire original image; never crop away most of a
+            # historical 4:3 photograph to force it into a vertical canvas.
+            visual_filter = ("scale=1080:1920:force_original_aspect_ratio=decrease,"
+                             "pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black,setsar=1,"
+                             "zoompan=z='min(zoom+0.00012,1.035)':"
                              "x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
                              "d=1:s=1080x1920:fps=30")
         elif kind == "video":
             if (stream.get("disposition", {}).get("attached_pic") or media_duration(meta) < 1):
                 raise PipelineError(f"Media scene {index + 1} is not a usable moving clip.")
-            base += ["-stream_loop", "-1", "-i", source["file"]]
-            visual_filter = ("scale=1080:1920:force_original_aspect_ratio=increase,"
-                             "crop=1080:1920,setsar=1,fps=30,setpts=PTS-STARTPTS")
+            base += ["-stream_loop", "-1", "-ss", str(max(0.0, source.get("start_at", 0.0))),
+                     "-i", source["file"]]
+            visual_filter = ("scale=1080:1920:force_original_aspect_ratio=decrease,"
+                             "pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black,"
+                             "setsar=1,fps=30,setpts=PTS-STARTPTS")
         else:
             raise PipelineError(f"Media scene {index + 1} has an unsupported visual kind.")
         base += ["-an", "-map", "0:v:0", "-vf", visual_filter,
