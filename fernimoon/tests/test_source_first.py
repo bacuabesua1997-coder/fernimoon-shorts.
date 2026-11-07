@@ -82,7 +82,7 @@ class EventGroundingTests(unittest.TestCase):
         with self.assertRaisesRegex(PipelineError, "source_id"):
             validate_script(script, 40, {"R1"})
 
-    @patch("fernimoon.media_sources.probe",
+    @patch("fernimoon.media.probe",
            return_value={"format": {"duration": "150.0"}})
     def test_same_original_film_can_supply_multiple_different_moments(self, probe):
         scenes = [{"source_id": "R1"}] * 6
