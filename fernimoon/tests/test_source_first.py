@@ -93,6 +93,30 @@ class EventGroundingTests(unittest.TestCase):
         gemini.assert_not_called()
         tts.assert_not_called()
 
+    def test_folklore_script_is_fact_checked_and_never_calls_gemini(self):
+        from dataclasses import replace
+        from fernimoon.script import generate_script
+        topic = "The Origin of the Black-Eyed Children Legend"
+        research = {
+            "subject_type": "urban_legend_unverified",
+            "sources": [{"id": f"R{i}"} for i in range(1, 7)]
+        }
+        with patch("fernimoon.script.request_json") as remote:
+            for duration in (35, 40, 45):
+                script = generate_script(topic, replace(config(), duration=duration), research)
+                self.assertEqual(len(script["scenes"]), 6)
+                self.assertEqual([scene["source_id"] for scene in script["scenes"]],
+                                 [f"R{i}" for i in range(1, 7)])
+                words = sum(len(scene["narration"].split()) for scene in script["scenes"])
+                self.assertGreaterEqual(words, int(duration * 2.1))
+                self.assertLessEqual(words, int(duration * 2.6))
+                content = " ".join(scene["narration"] for scene in script["scenes"]).lower()
+                self.assertIn("mother's house", content) if duration != 35 else None
+                self.assertIn("not independently verified", content) if duration != 35 else None
+                self.assertNotIn("ride to a local cinema", content)
+                self.assertNotIn("launched a famous urban legend", content)
+            remote.assert_not_called()
+
     def test_gemini_cannot_use_unresearched_clip(self):
         script = example_script()
         for scene in script["scenes"]:
