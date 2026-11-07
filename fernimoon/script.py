@@ -148,6 +148,19 @@ def generate_script(topic: str, config: Config, research: dict | None = None) ->
     approved = {s["id"] for s in research.get("sources", [])} if research else None
     if research is not None and not approved:
         raise PipelineError("Gemini: there are no verified source candidates to write a grounded script.")
+    if research is not None and research.get("subject_type") == "urban_legend_unverified":
+        system += (
+            " This specific subject is an UNVERIFIED MODERN URBAN LEGEND, not a documented "
+            "supernatural event. Begin with a factual folklore hook, then recount the "
+            "reported 1990s Texas car-window encounter as a CLAIM attributed to journalist "
+            "Brian Bethel, not independently established fact. Include details only as "
+            "claims: two boys, a request for a ride, unusual eyes and growing discomfort. "
+            "Explain how the story spread through early online folklore circles. "
+            "Acknowledge that no independently verified supernatural evidence exists. "
+            "Every visual is a fictional DRAMATIZATION, never original footage, a genuine "
+            "eyewitness photo or an authentic 1990s document. "
+            "Do not invent police reports, fatalities, photographs, witnesses or quotes. "
+        )
     if research is not None:
         source_details = [
             {"id": src["id"], "kind": src.get("kind"), "title": src.get("title"),
@@ -177,7 +190,8 @@ def generate_script(topic: str, config: Config, research: dict | None = None) ->
             service="Gemini", headers={"x-goog-api-key": config.gemini_key}, body={
                 "systemInstruction": {"parts": [{"text": system}]},
                 "contents": [{"role": "user", "parts": [{"text": json.dumps({
-                    "topic": topic, "researched_sources": source_details if research else []
+                    "topic": topic, "researched_sources": source_details if research else [],
+                    "fact_references": research.get("fact_references", []) if research else []
                 }) + feedback}]}],
                 "generationConfig": {"responseMimeType": "application/json", "responseSchema": request_schema,
                                      "temperature": 0.6, "maxOutputTokens": 8192},
