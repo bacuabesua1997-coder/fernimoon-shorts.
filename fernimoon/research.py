@@ -116,6 +116,41 @@ def research_topic(topic: str, work: Path, *, max_sources: int = 3) -> dict:
                        "priority_tier": 1,
                        "authenticity": "event_specific_candidate_not_independently_verified"})
         sources.append(source)
-    print(f"Research: {len(sources)} event-specific licensed media found before script.", flush=True)
+    if not sources:
+        # A named event with no verifiable visual source must not silently turn
+        # into generic unrelated stock imagery. For urban legends in particular,
+        # an anonymous photo is NOT a verified sighting.
+        art_candidates = {}
+        for query in research_queries(topic)[:2]:
+            try:
+                pages = search_commons((query + " illustration")[:100], limit=30)
+            except PipelineError:
+                continue
+            for page in pages:
+                asset = pick_media([page], event_core(topic), kind="illustration")
+                if asset is None:
+                    continue
+                match, score = relevance_to_event(topic, asset)
+                if match:
+                    art_candidates[asset["title"]] = (score, asset, query)
+        for _, asset, query in sorted(art_candidates.values(), key=lambda item: -item[0]):
+            if len(sources) >= max_sources:
+                break
+            filename = f"research-{len(sources):02d}{asset['extension']}"
+            try:
+                download_media(asset["url"], work / filename)
+            except PipelineError:
+                continue
+            source = {k: v for k, v in asset.items() if k != "url"}
+            source.update({"id": f"R{len(sources) + 1}", "file": filename,
+                           "research_query": query, "event_match": True,
+                           "priority_tier": 3, "authenticity": "illustration_not_documentary"})
+            sources.append(source)
+    if not sources:
+        raise PipelineError(
+            "SOURCE QUALITY GATE: no event-specific, suitably licensed original "
+            "footage/photo or correctly labeled illustration was found. "
+            "No unrelated Pixabay footage will be used and no paid voice call was made.")
+    print(f"Research: {len(sources)} event-specific licensed media located before script.", flush=True)
     return {"topic": topic, "searched": research_queries(topic), "sources": sources,
-            "quality_note": "Event metadata match, reuse license checked; footage still requires human historical verification."}
+            "quality_note": "Candidate media matches event metadata and reuse license only; human verification is still required."}
