@@ -166,6 +166,10 @@ def generate_script(topic: str, config: Config, research: dict | None = None) ->
             "The film renderer may play different segments of the same original recording. "
             "Do not invent photos, records, witnesses or source IDs. "
         )
+    request_schema = json.loads(json.dumps(SCRIPT_SCHEMA))
+    if research is not None:
+        scene_schema = request_schema["properties"]["scenes"]["items"]
+        scene_schema["required"] = [*scene_schema["required"], "source_id"]
     feedback = ""
     for attempt in range(2):
         response = request_json(
@@ -175,7 +179,7 @@ def generate_script(topic: str, config: Config, research: dict | None = None) ->
                 "contents": [{"role": "user", "parts": [{"text": json.dumps({
                     "topic": topic, "researched_sources": source_details if research else []
                 }) + feedback}]}],
-                "generationConfig": {"responseMimeType": "application/json", "responseSchema": SCRIPT_SCHEMA,
+                "generationConfig": {"responseMimeType": "application/json", "responseSchema": request_schema,
                                      "temperature": 0.6, "maxOutputTokens": 8192},
             })
         try:
