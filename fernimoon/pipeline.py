@@ -63,6 +63,7 @@ def create_short(topic: str, config: Config, output: Path) -> Path:
                                      "story_style": config.story_style,
                                      "footage_policy": "SOURCE FIRST: Wikimedia event-specific photo/film or clearly labeled illustration; no generic stock fallback",
                                      "research_source_count": len(research["sources"]),
+                                     "subject_type": research.get("subject_type", "documentary_candidate"),
                                      "sound_used": bool(sound), "sound_source": sound and {
                                          "source": sound["source"], "title": sound["title"],
                                          "page_url": sound["page_url"], "license": sound["license"]}})
@@ -74,6 +75,13 @@ def create_short(topic: str, config: Config, output: Path) -> Path:
         credits.append(f"{i}. {status} | {origin} | {source.get('title', source.get('page_url', ''))} | "
                        f"{source.get('creator', '')} | {source.get('license', source.get('license_url', ''))} | "
                        f"{source.get('page_url', '')}")
+    if research.get("subject_type") == "urban_legend_unverified":
+        credits.append("")
+        credits.append("EDITORIAL DISCLOSURE: All visuals are ORIGINAL DRAMATIZATIONS of an "
+                       "unverified urban legend; no footage depicts an authenticated encounter.")
+        credits.append("FOLKLORE BACKGROUND (not proof of supernatural events):")
+        for ref in research.get("fact_references", []):
+            credits.append(f"- {ref['title']}: {ref['url']}")
     if sound:
         credits.append("Sound moment: " + " | ".join(str(sound.get(x, "")) for x in
                        ("title", "creator", "license", "page_url")))
