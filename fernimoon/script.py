@@ -162,7 +162,7 @@ def generate_script(topic: str, config: Config, research: dict | None = None) ->
             "Use EXACTLY SIX chronological scenes. Scene 1 must use source_id R1 "
             "(empty night parking lot), scene 2 R2 (children approaching car), "
             "scene 3 R3 (request at window), scene 4 R4 (reported all-black eyes), "
-            "scene 5 R5 (story spreads online), and scene 6 R6 (driving away). "
+            "scene 5 R5 (driving away), and scene 6 R6 (story spreads online). "
             "Align the narrated subject to the shown scene. Preserve chronology "
             "but frame each reported encounter detail as an allegation. "
             "Do not invent police reports, fatalities, photographs, witnesses or quotes. "
