@@ -85,16 +85,23 @@ def pick_media(pages: list[dict], query: str, *, kind: str, context: str = "",
         if not license_name:
             continue
         mime = info.get("mime", "")
+        # Historical .ogv files are routinely served as application/ogg,
+        # not video/ogg (e.g. the public-domain 1940 Tacoma bridge film).
+        if mime in ("application/ogg", "application/x-ogg") and title.casefold().endswith(".ogv"):
+            mime = "video/ogg"
         if kind == "sound":
             if mime not in SOUND_MIMES or info.get("size", MAX_ASSET_BYTES + 1) > MAX_ASSET_BYTES:
                 continue
         elif mime not in REAL_MIMES:
             continue
-        elif mime.startswith("video/") and info.get("size", MAX_ASSET_BYTES + 1) > MAX_ASSET_BYTES:
-            continue
-        else:
-            if not mime.startswith("video/") and min(info.get("width", 0), info.get("height", 0)) < 540:
+        elif mime.startswith("video/"):
+            # Old archival film is often 640x480 or 320x240; upscale in
+            # FFmpeg instead of replacing it with an unrelated HD stock clip.
+            if info.get("size", MAX_ASSET_BYTES + 1) > MAX_ASSET_BYTES or min(
+                    info.get("width", 0), info.get("height", 0)) < 240:
                 continue
+        elif min(info.get("width", 0), info.get("height", 0)) < 540:
+            continue
         description = metadata(info, "ImageDescription")
         description_for_matching = (title.removeprefix("File:") + " " + description)[:700]
         if AI_WORDS.search(description_for_matching):
