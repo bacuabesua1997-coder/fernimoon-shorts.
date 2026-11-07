@@ -61,6 +61,8 @@ jobs:
               raise SystemExit(str(error)) from None
           print('Configuration is present; credentials are not printed.')
           PY
+      - name: Install original illustration renderer
+        run: python -m pip install Pillow==11.3.0
       - name: Install video renderer and fonts
         run: |
           sudo apt-get update -qq
