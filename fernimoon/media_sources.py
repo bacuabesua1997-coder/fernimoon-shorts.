@@ -44,3 +44,43 @@ def collect_priority_media(scenes: list[dict], config: Config, work: Path,
         results.append(media)
         print(f"Media {index + 1}/{len(scenes)}: {media['source']} ({media['kind']}, priority {media['priority_tier']}).", flush=True)
     return results
+
+
+def select_researched_media(scenes: list[dict], research: dict, work: Path) -> list[dict]:
+    """Only use source IDs actually selected during pre-script event research.
+
+    A single truthful archive film can supply multiple consecutive scenes.
+    Do not fabricate uniqueness by mixing unrelated modern stock footage.
+    """
+    from .media import media_duration, probe
+
+    approved = {source["id"]: source for source in research.get("sources", [])}
+    if not approved:
+        raise PipelineError("SOURCE QUALITY GATE: research found no approved visual sources.")
+    output = []
+    occurrence: dict[str, int] = {}
+    count_by_id: dict[str, int] = {}
+    for scene in scenes:
+        sid = scene.get("source_id")
+        if sid not in approved:
+            raise PipelineError("SOURCE QUALITY GATE: script references media absent from research.")
+        count_by_id[sid] = count_by_id.get(sid, 0) + 1
+    for i, scene in enumerate(scenes):
+        sid = scene["source_id"]
+        source = approved[sid]
+        candidate = dict(source)
+        candidate["scene"] = i + 1
+        candidate["source_id"] = sid
+        if candidate.get("kind") == "video":
+            info = probe(work / candidate["file"])
+            clip_duration = media_duration(info)
+            # Distribute reuses along the actual film, rather than restarting at
+            # the same first frame for every scene. Avoid seeking past the end.
+            n = count_by_id[sid]
+            k = occurrence.get(sid, 0)
+            occurrence[sid] = k + 1
+            candidate["start_at"] = round(max(0.0, clip_duration - 3.0) * k / max(n, 1), 3)
+        output.append(candidate)
+    if len(output) != len(scenes):
+        raise PipelineError("SOURCE QUALITY GATE: scene/media count mismatch.")
+    return output
