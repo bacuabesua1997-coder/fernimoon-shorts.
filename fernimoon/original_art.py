@@ -38,8 +38,8 @@ def generate_reconstruction(work: Path) -> list[dict]:
         "Two child silhouettes approach the driver's car window, theatrical reconstruction",
         "A hand touches the glass while two children stand outside, theatrical reconstruction",
         "Entirely black eyes seen in a fearful imagined close-up, theatrical reconstruction",
-        "A 1990s-style computer represents the legend circulating online, theatrical reconstruction",
         "A car leaving the empty parking lot, theatrical reconstruction",
+        "A 1990s-style computer represents the legend circulating online, theatrical reconstruction",
     ]
 
     def glow(canvas, x, y, rad, color, intensity=125):
@@ -125,7 +125,7 @@ def generate_reconstruction(work: Path) -> list[dict]:
             d.ellipse((423,553,584,675),fill=(7,8,12,255))
             d.arc((267,748,468,830),8,170,fill=(45,41,49,255),width=7)
             d.line((55,0,80,1280),fill=(41,54,66,130),width=19)
-        elif index==4:
+        elif index==5:
             d=ImageDraw.Draw(im)
             glow(im,360,600,290,(92,194,186),75)
             d=ImageDraw.Draw(im)
