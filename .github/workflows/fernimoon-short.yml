@@ -25,6 +25,9 @@ on:
           - mystery
           - history
           - science
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -35,6 +38,8 @@ concurrency:
 
 jobs:
   create-short:
+    # Explicit one-time run after this fix merges; ordinary future pushes skip.
+    if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[FERNIMOON-BEK-ONCE]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -48,8 +53,8 @@ jobs:
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
-          SHORTS_TOPIC: ${{ inputs.topic }}
-          SHORTS_STYLE: ${{ inputs.story_style }}
+          SHORTS_TOPIC: ${{ github.event_name == 'push' && 'The Origin of the Black-Eyed Children Legend' || inputs.topic }}
+          SHORTS_STYLE: ${{ github.event_name == 'push' && 'mystery' || inputs.story_style }}
         run: |
           python - <<'PY'
           import os
@@ -83,9 +88,9 @@ jobs:
           ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           ELEVENLABS_MODEL: ${{ vars.ELEVENLABS_MODEL }}
-          SHORTS_TOPIC: ${{ inputs.topic }}
-          SHORTS_DURATION: ${{ inputs.duration }}
-          SHORTS_STYLE: ${{ inputs.story_style }}
+          SHORTS_TOPIC: ${{ github.event_name == 'push' && 'The Origin of the Black-Eyed Children Legend' || inputs.topic }}
+          SHORTS_DURATION: ${{ github.event_name == 'push' && '40' || inputs.duration }}
+          SHORTS_STYLE: ${{ github.event_name == 'push' && 'mystery' || inputs.story_style }}
         # Treat topic as an environment value, never as interpolated shell code.
         run: python -m fernimoon --duration "$SHORTS_DURATION"
       - name: Download MP4 and companion files
