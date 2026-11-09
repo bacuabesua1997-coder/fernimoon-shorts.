@@ -66,7 +66,7 @@ class HistoricalRelevanceTests(unittest.TestCase):
     def test_no_misleading_movie_is_downloaded_if_no_relevant_clip(self, search, download):
         search.return_value = [example_hit(tags="japanese castle, osaka, nighttime")]
         with tempfile.TemporaryDirectory() as tmp:
-            with self.assertRaisesRegex(PipelineError, "no context-relevant historical stock clip"):
+            with self.assertRaisesRegex(PipelineError, "no context-relevant stock clip"):
                 collect_footage(
                     [{"search_terms": ["military helicopter night nightvision"]}], "fake-key",
                     Path(tmp), Path(tmp) / "cache",
