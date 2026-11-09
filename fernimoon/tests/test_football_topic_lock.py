@@ -6,6 +6,7 @@ from fernimoon.football_data import FootballAPI, build_football_context
 from fernimoon.football_entities import resolve_team_entity, visual_query_for_scene
 from fernimoon.football_news import _matches_topic
 from fernimoon.relevance import visual_relevance
+from fernimoon.football_script import enforce_team_topic_lock
 
 
 class ManchesterUnitedTopicLockTests(unittest.TestCase):
@@ -81,6 +82,47 @@ class ManchesterUnitedTopicLockTests(unittest.TestCase):
         )
         self.assertEqual(context["fixtures"], [])
         self.assertEqual(context["target_entity"], "manchester united")
+
+    def test_generic_global_roundup_script_is_rejected_for_manchester_united_topic(self):
+        script = {
+            "title": "European Football Roundup",
+            "scenes": [{
+                "narration": "European football delivered massive drama across the continent tonight.",
+                "fact_ids": ["mu-news"],
+                "search_terms": ["football match", "soccer fans"],
+            }],
+        }
+        facts = [{"id": "mu-news", "summary": "Manchester United are assessing their squad."}]
+        with self.assertRaisesRegex(PipelineError, "title must explicitly identify"):
+            enforce_team_topic_lock(script, "Manchester United", facts)
+
+    def test_club_locked_script_gets_club_specific_visual_queries(self):
+        script = {
+            "title": "Manchester United's Defining Week",
+            "scenes": [{
+                "narration": "Manchester United face a defining week at Old Trafford.",
+                "fact_ids": ["mu-news"],
+                "search_terms": ["football training ground", "soccer supporters"],
+            }],
+        }
+        facts = [{"id": "mu-news", "summary": "Manchester United are assessing their squad."}]
+        result = enforce_team_topic_lock(script, "Manchester United", facts)
+        self.assertEqual(result["target_entity"], "manchester united")
+        self.assertTrue(all("manchester united" in term.lower()
+                            for term in result["scenes"][0]["search_terms"]))
+
+    def test_scene_cannot_cite_an_unrelated_club_story(self):
+        script = {
+            "title": "Manchester United's Defining Week",
+            "scenes": [{
+                "narration": "Manchester United face a defining week at Old Trafford.",
+                "fact_ids": ["barca-news"],
+                "search_terms": ["football training ground", "soccer supporters"],
+            }],
+        }
+        facts = [{"id": "barca-news", "summary": "Barcelona beat Atletico Madrid."}]
+        with self.assertRaisesRegex(PipelineError, "cites no evidence specifically"):
+            enforce_team_topic_lock(script, "Manchester United", facts)
 
 
 if __name__ == "__main__":
