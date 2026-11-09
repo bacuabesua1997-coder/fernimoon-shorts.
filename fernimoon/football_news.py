@@ -32,7 +32,7 @@ DEFAULT_FEEDS = (
     "https://www.skysports.com/rss/12040",
 )
 DEFAULT_ALLOWED_DOMAINS = (
-    "bbc.co.uk", "theguardian.com", "espn.com", "skysports.com",
+    "bbc.co.uk", "bbc.com", "theguardian.com", "espn.com", "skysports.com",
     "manutd.com", "premierleague.com", "uefa.com", "fifa.com",
     "fifa.org", "the-afc.com", "concacaf.com", "cafonline.com",
     "bundesliga.com", "laliga.com", "legaseriea.it", "ligue1.com",
@@ -51,6 +51,8 @@ CATEGORY_TERMS = {
                 "youngster", "teenager", "prospect", "wonderkid", "graduate"),
     "player_spotlight": ("player", "career", "record", "milestone", "captain", "striker",
                          "midfielder", "defender", "goalkeeper", "form"),
+    "history_facts": ("history", "historic", "anniversary", "legend", "record",
+                      "classic", "decade", "years ago", "first ever"),
 }
 
 TEAM_ALIASES = {
@@ -340,7 +342,8 @@ def collect_football_news(topic: str, editorial_format: str = "auto",
         except ValueError:
             age_hours = 24 * max_age_days
         recency = max(0.0, 1.0 - age_hours / (24 * max_age_days))
-        return (article.get("publisher_count", 1), recency, article.get("title", ""))
+        corroboration = min(article.get("publisher_count", 1), 3) / 3
+        return (0.75 * recency + 0.25 * corroboration, published or "", article.get("title", ""))
 
     filtered.sort(key=rank, reverse=True)
     selected = filtered[:limit]
