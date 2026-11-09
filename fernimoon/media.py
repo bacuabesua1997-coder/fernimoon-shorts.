@@ -58,7 +58,7 @@ def verify_output(path: Path, target: float) -> dict:
             "Rendered video failed the 1080×1920 H.264 compatibility check. "
             f"Actual width={actual_video[0]}, height={actual_video[1]}, "
             f"codec={actual_video[2]}, pixel_format={actual_video[3]}.")
-    if audio.get("codec_name") != "aac" or not 35 <= duration <= 45.15 or abs(duration - target) > 0.15:
+    if audio.get("codec_name") != "aac" or not 29.85 <= duration <= 90.15 or abs(duration - target) > 0.15:
         raise PipelineError("Rendered video failed the audio/duration check.")
     try:
         if abs(float(audio["duration"]) - target) > 0.05 or abs(float(video["duration"]) - target) > 0.05:
