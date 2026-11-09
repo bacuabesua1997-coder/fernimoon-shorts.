@@ -9,7 +9,7 @@ Football Mode is a separate production path. It does not replace the existing do
 - Scope: global major competitions. The active competition catalogue is resolved from API-Football at runtime and filtered through the maintained major-competition registry.
 - Output: 9:16 Full HD; supported duration presets are 30, 45, 60, 75 and 90 seconds.
 - Visual rule: no persistent FERNIMOON STUDIO watermark or channel text across scenes.
-- Stock-media rule: Pixabay clips are illustrative B-roll only. They must never be described as the actual match, goal, or official highlights.
+- Media rule: prefer correctly licensed, club-matched Wikimedia Commons photos/videos; use Pixabay only as illustrative B-roll. Neither is represented as actual match highlights unless rights and provenance are independently established.
 
 ## Architecture
 
@@ -18,7 +18,7 @@ Football Mode is a separate production path. It does not replace the existing do
 3. Football News adapter reads allowlisted HTTPS RSS/Atom feeds from global publishers, normalizes headlines, excerpts, publication dates and URLs, filters by topic/category, deduplicates links and adds cautious headline-similarity metadata.
 4. Research orchestrator merges news and match data into a fact index. Every generated narration scene must cite one or more exact fact IDs from that index; unsupported claims fail local validation.
 5. Editorial generation sends the evidence pack to Gemini and applies format-specific instructions before validating the English narration against the duration-aware scene and word-count schema.
-6. Visual acquisition uses the existing Pixabay downloader to select relevant, licensed football stock footage. It is explicitly treated as illustrative, not match footage. User-owned or separately licensed match clips can be added later as a distinct media adapter.
+6. Visual acquisition prefers CC0/Public Domain Wikimedia Commons photos/videos that match the club and scene; it falls back to club-identity-matched Pixabay stock only when Commons has no suitable real media. Pixabay is explicitly labeled illustrative. User-owned or separately licensed match clips remain a distinct rights-controlled adapter.
 7. Voice uses a dedicated FOOTBALL_ELEVENLABS_VOICE_ID; football voice settings favor a more energetic delivery. The selected voice itself must be a male low-register voice in the ElevenLabs account.
 8. Render and QA reuse the existing FFmpeg renderer, timestamped captions, audio alignment, H.264/AAC output validation and artifact packaging.
 
@@ -80,7 +80,7 @@ The long-term Football Mode uses one shared data and render core with separate e
 The next adapters should be isolated behind provider interfaces:
 - Football data: fixtures, events, standings, team/player statistics, player profiles, transfers and injuries. Check the competition's coverage flags before requesting or narrating a field.
 - Football news: RSS/official club and competition announcements first, then reputable publishers. Transfer or controversy claims require independent corroboration and publication timestamps.
-- Media rights: user-owned clips, direct licenses, or media whose reuse terms explicitly allow the intended use. Do not rip broadcast feeds, paywalled video, YouTube highlights or social clips. Pixabay is only illustrative B-roll in the current implementation.
+- Media rights: prioritize CC0/Public Domain Commons media and other user-owned/directly licensed clips. Pixabay is illustrative B-roll only. Do not rip broadcast feeds, paywalled video, YouTube highlights or social clips.
 - Editorial ledger: every factual sentence maps to one or more retrieved records or article sources; uncertainty and opinion are labeled.
 - Visual renderer: score cards, match timelines, player/stat cards, tactical boards and scene-specific captions. No always-on channel watermark; if branding is wanted later, use a brief end slate only.
 
@@ -120,7 +120,7 @@ The current news categories are filters over available feed excerpts, not guaran
 - Scores and event records are attributed to API-Football; publisher reporting is presented as reporting, not as an official confirmation.
 - A reported transfer interest is not described as a completed transfer.
 - No invented quotes, injuries, lineups, scorers, assists, statistics or dressing-room claims.
-- Pixabay footage is illustrative B-roll. It is not represented as official highlights or footage of the specific fixture.
+- Wikimedia Commons media is used only when the metadata identifies a suitable CC0/Public Domain asset; Pixabay footage is illustrative B-roll and is not represented as official highlights or footage of the specific fixture.
 - No persistent channel watermark is rendered across the video.
 
 
@@ -133,7 +133,7 @@ For a recognized club topic:
 - The title and opening narration must explicitly identify the club.
 - Every scene must cite at least one approved fact that identifies the requested club.
 - Every scene's visual search terms are anchored to the club name and its distinctive venues.
-- Selected stock-video metadata must contain the club name, an accepted club alias, or a distinctive venue such as Old Trafford or Carrington.
+- Selected media metadata must contain the club name, an accepted club alias, or a distinctive venue such as Old Trafford or Carrington.
 - Generic football/soccer clips without club-specific metadata are rejected.
 - If no matching evidence or licensed club-specific visual is available, the pipeline stops instead of generating a misleading substitute.
 
