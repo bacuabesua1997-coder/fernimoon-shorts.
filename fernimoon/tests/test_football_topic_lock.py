@@ -10,6 +10,7 @@ from fernimoon.football_news import _matches_topic
 from fernimoon.relevance import visual_relevance
 from fernimoon.football_script import enforce_team_topic_lock
 from fernimoon.footage import collect_footage
+from fernimoon.commons import pick_media
 
 
 class ManchesterUnitedTopicLockTests(unittest.TestCase):
@@ -172,6 +173,30 @@ class ManchesterUnitedTopicLockTests(unittest.TestCase):
         self.assertEqual(context["fixtures"], [])
         self.assertEqual(context["competitions"], [])
         fixtures.assert_not_called()
+
+    def test_commons_media_requires_club_or_venue_identity_in_description(self):
+        generic = [{
+            "title": "File:Football Stadium Crowd.jpg",
+            "imageinfo": [{
+                "mime": "image/jpeg", "size": 12000, "width": 1600, "height": 900,
+                "thumburl": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/generic.jpg",
+                "url": "https://upload.wikimedia.org/wikipedia/commons/a/a1/generic.jpg",
+                "descriptionurl": "https://commons.wikimedia.org/wiki/File:Football_Stadium_Crowd.jpg",
+                "extmetadata": {
+                    "LicenseShortName": {"value": "CC0 1.0"},
+                    "ImageDescription": {"value": "A football crowd inside a large stadium."},
+                    "Artist": {"value": "Photographer"},
+                    "LicenseUrl": {"value": "https://creativecommons.org/publicdomain/zero/1.0/"},
+                },
+            }],
+        }]
+        result = pick_media(
+            generic,
+            "Manchester United football fans",
+            kind="real",
+            required_phrases=("Manchester United", "Man Utd", "MUFC", "Old Trafford", "Carrington"),
+        )
+        self.assertIsNone(result)
 
 
 if __name__ == "__main__":
