@@ -5,7 +5,7 @@ from pathlib import Path
 
 from .captions import make_ass, make_srt
 from .config import Config, PipelineError, validate_topic
-from .football_data import build_football_context
+from .football_research import build_football_research
 from .football_script import generate_football_script
 from .footage import collect_footage
 from .media import media_duration, preflight, probe, render, verify_output
@@ -18,7 +18,8 @@ def _write_json(path: Path, data) -> None:
 
 
 def create_football_short(topic: str, config: Config, output: Path,
-                          match_date: str | None = None) -> Path:
+                          match_date: str | None = None,
+                          editorial_format: str | None = None) -> Path:
     if config.mode != "football":
         raise PipelineError("Football pipeline requires FERNIMOON_MODE=football.")
     topic = validate_topic(topic)
@@ -26,12 +27,15 @@ def create_football_short(topic: str, config: Config, output: Path,
     output.mkdir(parents=True, exist_ok=True)
     work = Path(tempfile.mkdtemp(prefix="football-", dir=output)).resolve()
 
-    print("FOOTBALL MODE: loading global major-competition data from API-Football…", flush=True)
-    context = build_football_context(config.football_api_key, topic, match_date)
+    editorial_format = editorial_format or config.football_format
+    print("FOOTBALL MODE: researching publisher news and global match data…", flush=True)
+    context = build_football_research(
+        config.football_api_key, topic, match_date, editorial_format=editorial_format
+    )
     _write_json(work / "football_context.json", context)
 
-    print("Writing a fact-grounded English football script with Gemini…", flush=True)
-    script = generate_football_script(topic, config, context)
+    print(f"Writing an evidence-linked English football script ({editorial_format})…", flush=True)
+    script = generate_football_script(topic, config, context, editorial_format=editorial_format)
     _write_json(work / "script.json", script)
     narration = " ".join(scene["narration"] for scene in script["scenes"])
 
@@ -76,6 +80,9 @@ def create_football_short(topic: str, config: Config, output: Path,
         "channel": "FERNIMOON STUDIO",
         "mode": "football",
         "topic": topic,
+        "editorial_format": editorial_format,
+        "news_count": len(context.get("news") or []),
+        "fact_count": len(context.get("fact_index") or []),
         **metadata,
         "gemini_model": config.gemini_model,
         "voice_id": config.voice_id,
@@ -97,6 +104,15 @@ def create_football_short(topic: str, config: Config, output: Path,
         f"Match date: {context['match_date']}",
         "Scores and match facts are provider data; coverage and update latency vary by competition.",
         "",
+        "NEWS SOURCES (publisher reports are attributed, not automatically confirmed):",
+    ]
+    for article in context.get("news") or []:
+        credits.append(
+            f"{article.get('publisher', 'Publisher')} | {article.get('published_at', 'date not supplied')} | "
+            f"{article.get('title', '')} | {article.get('url', '')}"
+        )
+    credits.extend([
+        "",
         "VISUAL SOURCES:",
         "Pixabay stock footage is illustrative B-roll, not footage of the specific fixture.",
     ]
@@ -108,6 +124,15 @@ def create_football_short(topic: str, config: Config, output: Path,
     if sound:
         credits.append("Sound moment: " + " | ".join(str(sound.get(key, "")) for key in
                        ("title", "creator", "license", "page_url")))
+    credits.extend([
+        "",
+        "FACT REFERENCES USED BY THE SCRIPT:",
+    ])
+    for fact in context.get("fact_index") or []:
+        credits.append(
+            f"{fact.get('id')} | {fact.get('kind')} | {fact.get('publisher', 'API-Football')} | "
+            f"{fact.get('summary', '')} | {fact.get('url', '')}"
+        )
     (work / "upload.txt").write_text(
         script["title"] + "\n\n" + script["description"] + "\n\n" +
         "\n".join(credits) + "\n", encoding="utf-8")
