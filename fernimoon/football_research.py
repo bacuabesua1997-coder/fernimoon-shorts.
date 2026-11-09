@@ -1,7 +1,8 @@
 """Combine verified match data and allowlisted publisher news into an editorial research pack."""
 from .config import PipelineError
 from .football_data import build_football_context
-from .football_news import collect_football_news
+from .football_news import collect_football_news, _matches_topic
+from .football_entities import resolve_team_entity, normalize as normalize_team
 
 FORMATS = {
     "auto", "global_roundup", "breaking_news", "transfer_watch", "match_preview",
@@ -56,6 +57,28 @@ def build_football_research(api_key: str, topic: str, match_date: str | None,
 
     fixtures = match_context.get("fixtures") or []
     articles = news.get("articles") or []
+    entity = resolve_team_entity(topic)
+    if entity:
+        canonical, entity_data = entity
+        # Defence in depth: the evidence pack cannot widen to a global roundup.
+        articles = [item for item in articles if _matches_topic(item, topic)]
+        aliases = [normalize_team(alias) for alias in entity_data["aliases"]]
+        fixtures = [
+            item for item in fixtures
+            if any(
+                alias == normalize_team(team.get("name", ""))
+                or alias in normalize_team(team.get("name", ""))
+                for alias in aliases
+                for team in (item.get("home") or {}, item.get("away") or {})
+                if team.get("name")
+            )
+        ]
+        if not articles and not fixtures:
+            raise PipelineError(
+                f"Football Research: no {canonical}-specific evidence was found. "
+                "The system will not substitute unrelated global football stories. "
+                "Try again when a relevant publisher report or fixture is available."
+            )
     if editorial_format in NEWS_REQUIRED and not articles:
         details = " Publisher feeds returned no matching articles."
         if news.get("feed_errors"):
@@ -120,6 +143,8 @@ def build_football_research(api_key: str, topic: str, match_date: str | None,
         "query": topic,
         "match_date": match_context["match_date"],
         "editorial_format": editorial_format,
+        "target_entity": entity[0] if entity else None,
+        "visual_entity_phrases": list(entity[1]["visual_phrases"]) if entity else [],
         "competitions": match_context.get("competitions") or [],
         "fixtures": fixtures,
         "news": articles,
