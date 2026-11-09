@@ -119,8 +119,7 @@ class FootballCompetitionTests(unittest.TestCase):
              "league": {"id": 140, "name": "La Liga"},
              "home": {"name": "Barcelona"}, "away": {"name": "Real Madrid"}},
         ]
-        with patch.object(FootballAPI, "current_major_leagues", return_value=leagues), \\
-             patch.object(FootballAPI, "fixtures", return_value=fixtures):
+        with patch.object(FootballAPI, "current_major_leagues", return_value=leagues), patch.object(FootballAPI, "fixtures", return_value=fixtures):
             context = build_football_context(
                 "secret", "Manchester United", "2026-11-08", allow_empty=True
             )
