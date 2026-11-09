@@ -115,7 +115,7 @@ def create_football_short(topic: str, config: Config, output: Path,
         "",
         "VISUAL SOURCES:",
         "Pixabay stock footage is illustrative B-roll, not footage of the specific fixture.",
-    ]
+    ])
     for index, source in enumerate(sources, 1):
         credits.append(
             f"{index}. Pixabay stock footage | {source.get('page_url', '')} | "
