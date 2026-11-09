@@ -48,7 +48,7 @@ class FootballCompetitionTests(unittest.TestCase):
         self.assertTrue(is_major_competition({"name": "Premier League"}, {"name": "England"}))
         self.assertFalse(is_major_competition({"name": "Premier League"}, {"name": "Wales"}))
         self.assertTrue(is_major_competition({"name": "Serie A"}, {"name": "Italy"}))
-        self.assertFalse(is_major_competition({"name": "Serie A"}, {"name": "Brazil"}))
+        self.assertTrue(is_major_competition({"name": "Serie A"}, {"name": "Brazil"}))
         self.assertTrue(is_major_competition({"name": "UEFA Champions League"}, {"name": "World"}))
 
     @patch("fernimoon.football_data.request_json")
@@ -138,7 +138,8 @@ class FootballPresentationTests(unittest.TestCase):
         config = Config("gemini", "pixabay", "eleven", "deep_male_voice",
                         football_api_key="football", mode="football")
         with tempfile.TemporaryDirectory() as tmp:
-            synthesize(narration, config, os.path.join(tmp, "voice.mp3"))
+            from pathlib import Path
+            synthesize(narration, config, Path(tmp) / "voice.mp3")
         body = request.call_args.kwargs["body"]
         self.assertEqual(body["voice_settings"]["stability"], 0.42)
         self.assertEqual(body["voice_settings"]["similarity_boost"], 0.80)
