@@ -10,6 +10,7 @@ from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
 
 from .config import PipelineError
+from .football_entities import resolve_team_entity, normalize as normalize_team
 from .http import request_json
 
 API_ROOT = "https://v3.football.api-sports.io"
@@ -221,13 +222,27 @@ def build_football_context(api_key: str, topic: str, match_date: str | None = No
     fixtures = client.fixtures(match_date=target_date, live=live)
     selected = [item for item in fixtures if item["league"].get("id") in league_by_id]
 
-    # A named club or competition narrows the fixture pack. Generic roundup
-    # prompts retain the global fixture set instead of accidentally matching all.
+    # A named club is a hard scope constraint. If that club has no fixture
+    # today, return no fixture rather than silently switching to other clubs.
     topic_fold = _fold(topic)
+    entity = resolve_team_entity(topic)
     generic_terms = {"global", "world", "football", "soccer", "roundup", "news",
                      "latest", "live", "scores", "score", "today", "all", "matches"}
     specific_topic = any(token not in generic_terms for token in topic_fold.split())
-    if specific_topic:
+    if entity:
+        canonical, entity_data = entity
+        aliases = [normalize_team(alias) for alias in entity_data["aliases"]]
+        focused = []
+        for item in selected:
+            names = [
+                normalize_team((item.get("home") or {}).get("name", "")),
+                normalize_team((item.get("away") or {}).get("name", "")),
+            ]
+            if any(alias == name or alias in name or name in alias
+                   for alias in aliases for name in names if name):
+                focused.append(item)
+        selected = focused
+    elif specific_topic:
         focused = []
         for item in selected:
             names = [
@@ -284,6 +299,7 @@ def build_football_context(api_key: str, topic: str, match_date: str | None = No
         "retrieved_at": local_now.isoformat(),
         "timezone": LOCAL_TIMEZONE,
         "query": topic,
+        "target_entity": entity[0] if entity else None,
         "match_date": "live" if live else target_date,
         "competitions": [item for item in leagues if item["id"] in competition_ids],
         "fixtures": selected,
