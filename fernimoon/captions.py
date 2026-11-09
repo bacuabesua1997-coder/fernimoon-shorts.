@@ -33,7 +33,8 @@ def groups(words: list[Word]) -> list[list[Word]]:
 
 def make_ass(words: list[Word], duration: float,
              sources: list[dict] | None = None,
-             boundaries: list[float] | None = None) -> str:
+             boundaries: list[float] | None = None,
+             football_mode: bool = False) -> str:
     header = """[Script Info]
 ScriptType: v4.00+
 PlayResX: 1080
@@ -45,13 +46,12 @@ ScaledBorderAndShadow: yes
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 Style: Caption,DejaVu Sans,58,&H00FFFFFF,&H00FFFFFF,&H00101010,&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,100,160,390,1
 Style: Hook,DejaVu Sans,72,&H00FFFFFF,&H00FFFFFF,&H00101010,&H80000000,-1,0,0,0,100,100,0,0,1,5,3,2,90,130,430,1
-Style: Brand,DejaVu Sans,27,&H00FFFFFF,&H00FFFFFF,&H00202020,&H80000000,-1,0,0,0,100,100,2,0,1,2,1,8,80,80,190,1
 Style: SourceLabel,DejaVu Sans,32,&H00FFFFFF,&H00FFFFFF,&H00202020,&H80000000,-1,0,0,0,100,100,2,0,1,3,1,8,90,90,250,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
-    lines = [f"Dialogue: 0,0:00:00.00,{ass_time(duration)},Brand,,0,0,0,,FERNIMOON STUDIO"]
+    lines = []
     for group in groups(words):
         for index, word in enumerate(group):
             end = min(group[index + 1].start, word.end + 0.15) if index + 1 < len(group) else word.end
@@ -67,10 +67,14 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             lines.append(f"Dialogue: 1,{ass_time(word.start)},{ass_time(end)},{style},,0,0,0,,{text}")
     if sources is not None and boundaries is not None:
         for index, source in enumerate(sources):
+            label = None
             if source.get("kind") == "illustration":
                 label = ("DRAMATIZATION - UNVERIFIED LEGEND"
                          if source.get("authenticity") == "fictional_reconstruction_not_archival_evidence"
                          else "ILLUSTRATION")
+            elif football_mode and source.get("source") == "Pixabay":
+                label = "ILLUSTRATIVE STOCK FOOTAGE"
+            if label:
                 lines.append(f"Dialogue: 2,{ass_time(boundaries[index])},{ass_time(boundaries[index + 1])},"
                              f"SourceLabel,,0,0,0,,{label}")
     return header + "\n".join(lines) + "\n"
