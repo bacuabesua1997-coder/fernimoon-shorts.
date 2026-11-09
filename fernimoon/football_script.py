@@ -55,7 +55,7 @@ def generate_football_script(topic: str, config: Config, football_context: dict,
         "Tactical interpretations must be clearly framed as analysis. Separate facts, attributed reports "
         "and opinion. Avoid defamatory, sensational or misleading claims about identifiable people. "
         + FORMAT_GUIDANCE[editorial_format] + " "
-        "Return five to seven? No: choose the number of scenes that fits the duration, within the allowed range. "
+        "Choose the number of scenes that fits the duration, within the allowed range. "
         "Spell out numbers and abbreviations as they should be spoken. No URLs, markdown or stage directions. "
         "For every scene provide two or three concise English Pixabay search_terms for visually relevant "
         "football footage; include football or soccer in at least one term. Pixabay clips are illustrative "
