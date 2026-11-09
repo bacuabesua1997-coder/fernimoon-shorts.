@@ -62,7 +62,7 @@ python -m fernimoon --mode football --topic "Live global football scores" --dura
 
 API-Football documents coverage per competition and season. A competition may not provide all events, lineups, player statistics or live scores, and provider updates can lag the live event. The script generator therefore may only state facts present in the retrieved payload. If no major fixtures are returned for the requested date, the pipeline stops rather than inventing a roundup.
 
-This first implementation covers global major-competition fixture/live-score roundups. Match events, standings, player profiles, transfer-news verification, richer tactical analysis and authorized match-highlight ingestion are planned as separate adapters and workflows.
+The current implementation covers global major-competition fixtures/live scores, selected match events and team statistics when provider coverage allows, plus allowlisted publisher RSS/Atom news. Full player profiles, transfer/injury verification and authorized match-highlight ingestion remain separate future adapters.
 
 ## Editorial formats and next architecture layers
 
@@ -84,7 +84,7 @@ The next adapters should be isolated behind provider interfaces:
 - Editorial ledger: every factual sentence maps to one or more retrieved records or article sources; uncertainty and opinion are labeled.
 - Visual renderer: score cards, match timelines, player/stat cards, tactical boards and scene-specific captions. No always-on channel watermark; if branding is wanted later, use a brief end slate only.
 
-The first code increment deliberately implements the fixture/live-score vertical slice before adding news and highlight ingestion. This avoids presenting unverified transfer rumours or copyrighted match footage as source material.
+The current vertical slice combines fixture/live-score data with publisher RSS/Atom discovery. Authorized match-highlight ingestion remains a separate rights-controlled adapter. This avoids presenting unverified transfer rumours or copyrighted match footage as source material.
 
 
 ## Football Intelligence 2.0 — editorial formats
@@ -122,3 +122,21 @@ The current news categories are filters over available feed excerpts, not guaran
 - No invented quotes, injuries, lineups, scorers, assists, statistics or dressing-room claims.
 - Pixabay footage is illustrative B-roll. It is not represented as official highlights or footage of the specific fixture.
 - No persistent channel watermark is rendered across the video.
+
+
+## Named-team topic and visual identity lock
+
+A named club is a hard scope constraint, not a suggestion. If the topic is Manchester United, the research pack must contain only Manchester United articles and fixtures. The pipeline must not replace missing club evidence with a European or global roundup.
+
+For a recognized club topic:
+
+- The title and opening narration must explicitly identify the club.
+- Every scene must cite at least one approved fact that identifies the requested club.
+- Every scene's visual search terms are anchored to the club name and its distinctive venues.
+- Selected stock-video metadata must contain the club name, an accepted club alias, or a distinctive venue such as Old Trafford or Carrington.
+- Generic football/soccer clips without club-specific metadata are rejected.
+- If no matching evidence or licensed club-specific visual is available, the pipeline stops instead of generating a misleading substitute.
+
+For Manchester United, accepted text aliases include Manchester United, Man United, Man Utd, MUFC and Red Devils. Visual identity phrases are narrower: Manchester United, Man Utd, MUFC, Old Trafford and Carrington. The nickname alone is not sufficient to identify a stock clip.
+
+This gate applies to the research, script and media stages. It is specifically intended to prevent a repeat of FERNIMOONSTUDIO #19, whose Manchester United request was incorrectly rendered as a generic European results roundup.
