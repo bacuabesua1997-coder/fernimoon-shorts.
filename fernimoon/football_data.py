@@ -216,10 +216,12 @@ def build_football_context(api_key: str, topic: str, match_date: str | None = No
         raise PipelineError("Football match date must use YYYY-MM-DD.")
 
     leagues = client.current_major_leagues()
-    if not leagues:
+    if not leagues and not allow_empty:
         raise PipelineError("API-Football returned no active competitions from the global major-league registry.")
     league_by_id = {item["id"]: item for item in leagues if isinstance(item.get("id"), int)}
-    fixtures = client.fixtures(match_date=target_date, live=live)
+    # News-led formats may proceed without fixture coverage; they must not invent
+    # a matchday roundup simply because the provider has no active league records.
+    fixtures = client.fixtures(match_date=target_date, live=live) if league_by_id else []
     selected = [item for item in fixtures if item["league"].get("id") in league_by_id]
 
     # A named club is a hard scope constraint. If that club has no fixture
