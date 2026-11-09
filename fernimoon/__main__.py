@@ -8,13 +8,19 @@ from .pipeline import create_short
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Create an English, real-footage Short for FERNIMOON STUDIO.")
+    parser = argparse.ArgumentParser(description="Create an English Short for FERNIMOON STUDIO.")
     parser.add_argument("--topic", default=os.environ.get("SHORTS_TOPIC", ""), help="Topic (English or Vietnamese); narration is English")
     parser.add_argument("--duration", type=int, default=40, choices=range(35, 46), metavar="35–45")
+    parser.add_argument("--mode", choices=("documentary", "football"),
+                        default=os.environ.get("FERNIMOON_MODE", "documentary"),
+                        help="Production mode: documentary or global football")
+    parser.add_argument("--date", default=os.environ.get("FOOTBALL_DATE", ""),
+                        help="Football match date in YYYY-MM-DD format; defaults to today")
     parser.add_argument("--output", type=Path, default=Path("output/fernimoon"))
     args = parser.parse_args()
     try:
-        create_short(args.topic, Config.from_env(args.duration), args.output)
+        config = Config.from_env(args.duration, args.mode)
+        create_short(args.topic, config, args.output, match_date=args.date or None)
         return 0
     except PipelineError as exc:
         print(f"FERNIMOON: {exc}", file=sys.stderr)
