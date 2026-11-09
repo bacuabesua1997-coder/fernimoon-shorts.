@@ -44,7 +44,8 @@ def _words(value: str) -> set[str]:
 
 def _has_phrase(value: str, phrase: str) -> bool:
     text = " " + re.sub(r"[^a-z]+", " ", (value or "").casefold()).strip() + " "
-    return " " + phrase + " " in text
+    needle = re.sub(r"[^a-z]+", " ", (phrase or "").casefold()).strip()
+    return bool(needle) and " " + needle + " " in text
 
 
 def target_location(context: str) -> str | None:
