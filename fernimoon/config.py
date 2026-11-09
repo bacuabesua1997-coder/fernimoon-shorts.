@@ -16,7 +16,7 @@ class Config:
     voice_id: str
     gemini_model: str = "gemini-2.5-flash"
     elevenlabs_model: str = "eleven_multilingual_v2"
-    duration: int = 60
+    duration: int = 40
     story_style: str = "mystery"
     football_api_key: str = field(default="", repr=False)
     mode: str = "documentary"
