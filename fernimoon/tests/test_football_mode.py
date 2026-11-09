@@ -50,6 +50,9 @@ class FootballCompetitionTests(unittest.TestCase):
         self.assertTrue(is_major_competition({"name": "Serie A"}, {"name": "Italy"}))
         self.assertTrue(is_major_competition({"name": "Serie A"}, {"name": "Brazil"}))
         self.assertTrue(is_major_competition({"name": "UEFA Champions League"}, {"name": "World"}))
+        self.assertTrue(is_major_competition({"name": "UEFA Women's Champions League"}, {"name": "World"}))
+        self.assertTrue(is_major_competition({"name": "Women's Super League"}, {"name": "England"}))
+        self.assertTrue(is_major_competition({"name": "FIFA Women's World Cup"}, {"name": "World"}))
 
     @patch("fernimoon.football_data.request_json")
     def test_current_major_leagues_are_resolved_from_provider_not_hardcoded_ids(self, request):
