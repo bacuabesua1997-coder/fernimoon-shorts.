@@ -109,6 +109,24 @@ class FootballCompetitionTests(unittest.TestCase):
         self.assertTrue(context["retrieved_at"])
         self.assertEqual(context["match_date"], "2026-11-08")
 
+    def test_named_club_with_no_fixture_does_not_fall_back_to_global_matches(self):
+        leagues = [{"id": 39, "name": "Premier League", "season": 2026}]
+        fixtures = [
+            {"fixture_id": 10, "timestamp": 1, "status": "FT",
+             "league": {"id": 39, "name": "Premier League"},
+             "home": {"name": "Arsenal"}, "away": {"name": "Chelsea"}},
+            {"fixture_id": 11, "timestamp": 2, "status": "FT",
+             "league": {"id": 140, "name": "La Liga"},
+             "home": {"name": "Barcelona"}, "away": {"name": "Real Madrid"}},
+        ]
+        with patch.object(FootballAPI, "current_major_leagues", return_value=leagues), \\
+             patch.object(FootballAPI, "fixtures", return_value=fixtures):
+            context = build_football_context(
+                "secret", "Manchester United", "2026-11-08", allow_empty=True
+            )
+        self.assertEqual(context["fixtures"], [])
+        self.assertEqual(context["competitions"], [])
+
 
 class FootballPresentationTests(unittest.TestCase):
     def test_ass_has_no_persistent_channel_watermark(self):
