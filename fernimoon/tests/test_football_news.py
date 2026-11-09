@@ -52,6 +52,25 @@ class FootballNewsParsingTests(unittest.TestCase):
         )
         self.assertEqual(_parse_feed(payload, BBC, set(DEFAULT_ALLOWED_DOMAINS)), [])
 
+    @patch.dict(os.environ, {}, clear=True)
+    def test_named_club_adds_its_official_rss_feed(self):
+        feeds = configured_feeds("Manchester United")
+        self.assertIn("https://www.manutd.com/Feeds/NewsSecondRSSFeed", feeds)
+        self.assertIn(BBC, feeds)
+
+    @patch.dict(os.environ, {"FOOTBALL_NEWS_FEEDS": BBC}, clear=True)
+    @patch("fernimoon.football_news._fetch_feed")
+    def test_breaking_news_includes_current_club_updates(self, fetch):
+        fetch.return_value = rss(
+            "Manchester United",
+            "https://www.manutd.com/en/news/2026/11/09/example",
+            "Carrick explains Maguire change",
+            "Manchester United head coach Michael Carrick explains his latest team decision.",
+        )
+        result = collect_football_news("Manchester United", "breaking_news")
+        self.assertEqual(result["selected_count"], 1)
+        self.assertIn("Carrick explains", result["articles"][0]["title"])
+
     @patch.dict(os.environ, {"FOOTBALL_NEWS_FEEDS": BBC}, clear=True)
     @patch("fernimoon.football_news._fetch_feed")
     def test_filters_by_team_alias_and_transfer_format(self, fetch):
