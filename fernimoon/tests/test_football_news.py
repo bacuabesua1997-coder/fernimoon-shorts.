@@ -9,6 +9,7 @@ from fernimoon.config import PipelineError
 from fernimoon.football_news import (
     DEFAULT_ALLOWED_DOMAINS,
     _parse_feed,
+    _matches_topic,
     collect_football_news,
     configured_feeds,
 )
@@ -57,6 +58,18 @@ class FootballNewsParsingTests(unittest.TestCase):
         feeds = configured_feeds("Manchester United")
         self.assertIn("https://www.manutd.com/Feeds/NewsSecondRSSFeed", feeds)
         self.assertIn(BBC, feeds)
+
+    def test_official_club_feed_scopes_articles_even_without_club_name_in_headline(self):
+        official = "https://www.manutd.com/Feeds/NewsSecondRSSFeed"
+        payload = rss(
+            "Manchester United",
+            "https://www.manutd.com/en/news/2026/11/09/example",
+            "Carrick explains Maguire change",
+            "The manager has explained his latest selection decision.",
+        )
+        article = _parse_feed(payload, official, set(DEFAULT_ALLOWED_DOMAINS))[0]
+        self.assertEqual(article["team_entity"], "manchester united")
+        self.assertTrue(_matches_topic(article, "Manchester United"))
 
     @patch.dict(os.environ, {"FOOTBALL_NEWS_FEEDS": BBC}, clear=True)
     @patch("fernimoon.football_news._fetch_feed")
