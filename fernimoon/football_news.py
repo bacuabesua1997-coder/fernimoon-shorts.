@@ -18,13 +18,19 @@ import time
 import xml.etree.ElementTree as ET
 
 from .config import PipelineError
-from .football_entities import TEAM_ENTITIES, normalize
+from .football_entities import TEAM_ENTITIES, normalize, resolve_team_entity
 
 MAX_FEED_BYTES = 2 * 1024 * 1024
 FEED_TIMEOUT = 15
 MAX_FEEDS = 12
 MAX_ITEMS_PER_FEED = 30
 MAX_ARTICLES = 40
+
+# First-party club feeds are added only when that club is the requested topic.
+# This prevents one team's official news from biasing global football roundups.
+TEAM_NEWS_FEEDS = {
+    "manchester united": ("https://www.manutd.com/Feeds/NewsSecondRSSFeed",),
+}
 
 DEFAULT_FEEDS = (
     "https://feeds.bbci.co.uk/sport/football/rss.xml",
@@ -41,7 +47,12 @@ DEFAULT_ALLOWED_DOMAINS = (
 )
 
 CATEGORY_TERMS = {
-    "breaking_news": ("breaking", "announces", "confirmed", "official", "sacked", "appointed"),
+    "breaking_news": (
+        "breaking", "announces", "confirmed", "official", "sacked", "appointed",
+        "latest", "update", "injury", "injuries", "fitness", "team news",
+        "future", "pressure", "decision", "explains", "responds", "quashes",
+        "named", "record", "match report", "result",
+    ),
     "transfer_watch": ("transfer", "signing", "signs", "bid", "loan", "deal", "contract",
                        "interest", "move", "agreed", "release clause", "free agent"),
     "drama": ("controversy", "row", "clash", "feud", "crisis", "fallout", "anger",
@@ -109,9 +120,14 @@ def _allowed_domains() -> set[str]:
     return domains
 
 
-def configured_feeds() -> list[str]:
+def configured_feeds(topic: str | None = None) -> list[str]:
     raw = os.environ.get("FOOTBALL_NEWS_FEEDS", "").strip()
     feeds = [item.strip() for item in raw.split(";") if item.strip()] if raw else list(DEFAULT_FEEDS)
+    resolved = resolve_team_entity(topic or "")
+    if resolved:
+        canonical, _entity = resolved
+        feeds.extend(TEAM_NEWS_FEEDS.get(canonical, ()))
+    feeds = list(dict.fromkeys(feeds))
     if not 1 <= len(feeds) <= MAX_FEEDS:
         raise PipelineError(f"Football News: configure between 1 and {MAX_FEEDS} RSS feeds.")
     allowed = _allowed_domains()
@@ -277,7 +293,7 @@ def collect_football_news(topic: str, editorial_format: str = "auto",
         raise PipelineError("Football News: unsupported editorial format.")
     if not 1 <= max_age_days <= 365 or not 1 <= limit <= MAX_ARTICLES:
         raise PipelineError("Football News: invalid age or article limit.")
-    feeds = configured_feeds()
+    feeds = configured_feeds(topic)
     allowed = _allowed_domains()
     articles = []
     errors = []
