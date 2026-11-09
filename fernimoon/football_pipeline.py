@@ -40,9 +40,11 @@ def create_football_short(topic: str, config: Config, output: Path,
     narration = " ".join(scene["narration"] for scene in script["scenes"])
 
     print("Finding licensed, relevant football stock footage (not match highlights)…", flush=True)
+    required_visual_phrases = context.get("visual_entity_phrases") or None
     sources = collect_footage(
         script["scenes"], config.pixabay_key, work, output / "pixabay-cache",
         require_relevance=True,
+        required_phrases=required_visual_phrases,
     )
     _write_json(work / "sources.json", sources)
 
@@ -81,6 +83,8 @@ def create_football_short(topic: str, config: Config, output: Path,
         "mode": "football",
         "topic": topic,
         "editorial_format": editorial_format,
+        "target_entity": context.get("target_entity"),
+        "visual_entity_phrases": required_visual_phrases or [],
         "news_count": len(context.get("news") or []),
         "fact_count": len(context.get("fact_index") or []),
         **metadata,
@@ -92,7 +96,10 @@ def create_football_short(topic: str, config: Config, output: Path,
         "football_retrieved_at": context["retrieved_at"],
         "competition_count": len(context["competitions"]),
         "fixture_count": len(context["fixtures"]),
-        "visual_policy": "Licensed illustrative stock footage only; never represented as actual match highlights.",
+        "visual_policy": (
+            "Club-identity-matched licensed illustrative stock footage only; no generic football fallback. "
+            "Never represented as actual match highlights."
+        ),
         "sound_used": bool(sound),
     })
 
