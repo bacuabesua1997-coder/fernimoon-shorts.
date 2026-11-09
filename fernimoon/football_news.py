@@ -32,7 +32,7 @@ DEFAULT_FEEDS = (
     "https://www.skysports.com/rss/12040",
 )
 DEFAULT_ALLOWED_DOMAINS = (
-    "bbc.co.uk", "bbc.com", "theguardian.com", "espn.com", "skysports.com",
+    "bbc.co.uk", "bbc.com", "bbci.co.uk", "theguardian.com", "espn.com", "skysports.com",
     "manutd.com", "premierleague.com", "uefa.com", "fifa.com",
     "fifa.org", "the-afc.com", "concacaf.com", "cafonline.com",
     "bundesliga.com", "laliga.com", "legaseriea.it", "ligue1.com",
