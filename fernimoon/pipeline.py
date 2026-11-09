@@ -18,10 +18,14 @@ def write_json(path: Path, data) -> None:
 
 
 def create_short(topic: str, config: Config, output: Path,
-                 match_date: str | None = None) -> Path:
+                 match_date: str | None = None,
+                 editorial_format: str | None = None) -> Path:
     if config.mode == "football":
         from .football_pipeline import create_football_short
-        return create_football_short(topic, config, output, match_date=match_date)
+        return create_football_short(
+            topic, config, output, match_date=match_date,
+            editorial_format=editorial_format or config.football_format,
+        )
     if config.mode != "documentary":
         raise PipelineError("FERNIMOON_MODE must be documentary or football.")
 
