@@ -91,7 +91,8 @@ def is_major_competition(league: dict, country: dict | None = None) -> bool:
     name = _fold(league.get("name", ""))
     country_name = _fold((country or {}).get("name", ""))
     for alias, countries in MAJOR_COMPETITIONS.items():
-        if name == alias or name.startswith(alias + " "):
+        alias_name = _fold(alias)
+        if name == alias_name or name.startswith(alias_name + " "):
             return not countries or any(country_name == _fold(item) for item in countries)
     return False
 
