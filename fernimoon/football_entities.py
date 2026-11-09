@@ -229,7 +229,7 @@ TEAM_ENTITIES = {
     },
     "inter miami": {
         "aliases": ("inter miami",),
-        "visual_phrases": ("inter miami", chase stadium),
+        "visual_phrases": ("inter miami", "chase stadium"),
         "visual_queries": (
             "Inter Miami football team",
             "Inter Miami Chase Stadium",
