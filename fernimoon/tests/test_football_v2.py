@@ -105,7 +105,7 @@ class FootballResearchTests(unittest.TestCase):
         "match_date": "today", "competitions": [], "fixtures": [], "editorial_note": "",
     })
     def test_transfer_format_stops_if_no_publisher_material_exists(self, match_data, news_data):
-        with self.assertRaisesRegex(PipelineError, "no verified RSS material"):
+        with self.assertRaisesRegex(PipelineError, "no manchester united-specific evidence"):
             build_football_research("secret", "Manchester United", None, "transfer_watch")
 
 
