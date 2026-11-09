@@ -21,7 +21,7 @@ MAJOR_COMPETITIONS = {
     "championship": ("england",),
     "la liga": ("spain",),
     "bundesliga": ("germany",),
-    "serie a": ("italy",),
+    "serie a": ("italy", "brazil"),
     "ligue 1": ("france",),
     "eredivisie": ("netherlands",),
     "primeira liga": ("portugal",),
