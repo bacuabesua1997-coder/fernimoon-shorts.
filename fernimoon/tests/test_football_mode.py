@@ -7,6 +7,10 @@ from unittest.mock import patch
 from fernimoon.captions import make_ass
 from fernimoon.config import Config, PipelineError
 from fernimoon.football_data import FootballAPI, build_football_context, is_major_competition
+from fernimoon.football_entities import (
+    matches_visual_identity, resolve_team_entity, visual_query_for_scene,
+)
+from fernimoon.footage import select_footage
 from fernimoon.speech import synthesize, Word
 
 
@@ -127,6 +131,30 @@ class FootballCompetitionTests(unittest.TestCase):
         self.assertEqual(context["competitions"], [])
 
 
+class ClubSpecificVisualTests(unittest.TestCase):
+    def test_manchester_united_scene_searches_are_club_specific(self):
+        terms = visual_query_for_scene(
+            "Manchester United", ["football training", "soccer supporters"], 0
+        )
+        self.assertTrue(all("manchester united" in term.lower() for term in terms))
+        self.assertTrue(any("old trafford" in term.lower() for term in terms))
+
+    def test_generic_football_stock_is_rejected_for_manchester_united(self):
+        resolved = resolve_team_entity("Manchester United")
+        self.assertIsNotNone(resolved)
+        entity = resolved[1]
+        generic_hit = {
+            "type": "film", "id": 1001, "tags": "football soccer stadium fans",
+            "duration": 12, "videos": {},
+        }
+        self.assertFalse(matches_visual_identity(generic_hit["tags"], entity))
+        self.assertIsNone(select_footage(
+            [generic_hit], set(), query="Manchester United football stadium",
+            required_entity=entity,
+        ))
+        self.assertTrue(matches_visual_identity("Old Trafford Manchester United stadium", entity))
+
+    
 class FootballPresentationTests(unittest.TestCase):
     def test_ass_has_no_persistent_channel_watermark(self):
         ass = make_ass([Word("Goal!", 0.1, 0.8)], 40)
