@@ -89,7 +89,7 @@ jobs:
           FOOTBALL_API_KEY: ${{ secrets.FOOTBALL_API_KEY }}
           FERNIMOON_MODE: ${{ github.event_name == 'push' && 'documentary' || inputs.mode }}
           SHORTS_TOPIC: ${{ github.event_name == 'push' && 'The Origin of the Black-Eyed Children Legend' || inputs.topic }}
-          SHORTS_DURATION: ${{ github.event_name == 'push' && '40' || inputs.duration }}
+          SHORTS_DURATION: ${{ github.event_name == 'push' && '45' || inputs.duration }}
           SHORTS_STYLE: ${{ github.event_name == 'push' && 'mystery' || inputs.story_style }}
           FOOTBALL_FORMAT: ${{ github.event_name == 'push' && 'auto' || inputs.football_format }}
           FOOTBALL_NEWS_FEEDS: ${{ vars.FOOTBALL_NEWS_FEEDS }}
@@ -139,7 +139,7 @@ jobs:
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           ELEVENLABS_MODEL: ${{ vars.ELEVENLABS_MODEL }}
           SHORTS_TOPIC: ${{ github.event_name == 'push' && 'The Origin of the Black-Eyed Children Legend' || inputs.topic }}
-          SHORTS_DURATION: ${{ github.event_name == 'push' && '40' || inputs.duration }}
+          SHORTS_DURATION: ${{ github.event_name == 'push' && '45' || inputs.duration }}
           SHORTS_STYLE: ${{ github.event_name == 'push' && 'mystery' || inputs.story_style }}
         # Treat topic as an environment value, never as interpolated shell code.
         run: python -m fernimoon --mode "$FERNIMOON_MODE" --duration "$SHORTS_DURATION" --date "$FOOTBALL_DATE" --format "$FOOTBALL_FORMAT"
