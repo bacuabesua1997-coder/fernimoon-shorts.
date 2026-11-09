@@ -22,12 +22,32 @@ on:
       duration:
         description: "Thời lượng video (giây)"
         required: true
-        default: "40"
+        default: "60"
         type: choice
         options:
-          - "35"
-          - "40"
+          - "30"
           - "45"
+          - "60"
+          - "75"
+          - "90"
+      football_format:
+        description: "Dạng nội dung Football Mode"
+        required: true
+        default: auto
+        type: choice
+        options:
+          - auto
+          - global_roundup
+          - breaking_news
+          - transfer_watch
+          - match_preview
+          - match_recap
+          - tactical_analysis
+          - player_spotlight
+          - club_business
+          - drama
+          - academy
+          - history_facts
       story_style:
         description: "Phong cách nội dung: bí ẩn / lịch sử / khoa học"
         required: true
@@ -53,7 +73,7 @@ jobs:
     # Explicit one-time run after this fix merges; ordinary future pushes skip.
     if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[FERNIMOON-BEK-ONCE]') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -69,13 +89,21 @@ jobs:
           FOOTBALL_API_KEY: ${{ secrets.FOOTBALL_API_KEY }}
           FERNIMOON_MODE: ${{ github.event_name == 'push' && 'documentary' || inputs.mode }}
           SHORTS_TOPIC: ${{ github.event_name == 'push' && 'The Origin of the Black-Eyed Children Legend' || inputs.topic }}
+          SHORTS_DURATION: ${{ github.event_name == 'push' && '40' || inputs.duration }}
           SHORTS_STYLE: ${{ github.event_name == 'push' && 'mystery' || inputs.story_style }}
+          FOOTBALL_FORMAT: ${{ github.event_name == 'push' && 'auto' || inputs.football_format }}
+          FOOTBALL_NEWS_FEEDS: ${{ vars.FOOTBALL_NEWS_FEEDS }}
+          FOOTBALL_NEWS_ALLOWED_DOMAINS: ${{ vars.FOOTBALL_NEWS_ALLOWED_DOMAINS }}
         run: |
           python - <<'PY'
           import os
           from fernimoon.config import Config, PipelineError, validate_topic
           try:
-              Config.from_env(mode=os.environ.get('FERNIMOON_MODE', 'documentary'))
+              Config.from_env(
+                  duration=int(os.environ['SHORTS_DURATION']),
+                  mode=os.environ.get('FERNIMOON_MODE', 'documentary'),
+                  football_format=os.environ.get('FOOTBALL_FORMAT', 'auto'),
+              )
               validate_topic(os.environ['SHORTS_TOPIC'])
           except PipelineError as error:
               raise SystemExit(str(error)) from None
@@ -105,13 +133,16 @@ jobs:
           FOOTBALL_API_KEY: ${{ secrets.FOOTBALL_API_KEY }}
           FERNIMOON_MODE: ${{ github.event_name == 'push' && 'documentary' || inputs.mode }}
           FOOTBALL_DATE: ${{ inputs.match_date }}
+          FOOTBALL_FORMAT: ${{ github.event_name == 'push' && 'auto' || inputs.football_format }}
+          FOOTBALL_NEWS_FEEDS: ${{ vars.FOOTBALL_NEWS_FEEDS }}
+          FOOTBALL_NEWS_ALLOWED_DOMAINS: ${{ vars.FOOTBALL_NEWS_ALLOWED_DOMAINS }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           ELEVENLABS_MODEL: ${{ vars.ELEVENLABS_MODEL }}
           SHORTS_TOPIC: ${{ github.event_name == 'push' && 'The Origin of the Black-Eyed Children Legend' || inputs.topic }}
           SHORTS_DURATION: ${{ github.event_name == 'push' && '40' || inputs.duration }}
           SHORTS_STYLE: ${{ github.event_name == 'push' && 'mystery' || inputs.story_style }}
         # Treat topic as an environment value, never as interpolated shell code.
-        run: python -m fernimoon --mode "$FERNIMOON_MODE" --duration "$SHORTS_DURATION" --date "$FOOTBALL_DATE"
+        run: python -m fernimoon --mode "$FERNIMOON_MODE" --duration "$SHORTS_DURATION" --date "$FOOTBALL_DATE" --format "$FOOTBALL_FORMAT"
       - name: Download MP4 and companion files
         uses: actions/upload-artifact@v4
         with:
@@ -124,8 +155,10 @@ jobs:
           cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
           ## FERNIMOON STUDIO
           Video đã hoàn tất: **1080 × 1920, H.264/AAC, phụ đề động theo giọng đọc**.
-          Documentary Mode giữ các phong cách mystery, history và science. Football Mode tạo bản tin bóng đá tiếng Anh từ dữ liệu trận đấu.
-          Football Mode dùng giọng nam trầm riêng và không có watermark kênh chạy xuyên video.
+          Football Mode hỗ trợ tin tức, chuyển nhượng, drama, cầu thủ, phân tích và dữ liệu trận đấu toàn cầu.
+          Thời lượng Football Mode: 30, 45, 60, 75 hoặc 90 giây. Mỗi cảnh có tham chiếu nguồn dữ liệu.
+          News Mode dùng RSS từ các nhà xuất bản được cho phép; nguồn báo chí được phân biệt với xác nhận chính thức.
+          Không có watermark kênh chạy xuyên video.
           Mở **Artifacts** ở cuối trang lần chạy này, tải gói `FERNIMOON-STUDIO-*` và giải nén MP4.
           Gói cũng có phụ đề SRT/ASS, kịch bản, tiêu đề và nguồn video Pixabay.
           Xem lại nội dung, phần crop dọc và nguồn tư liệu trước khi đăng YouTube.
