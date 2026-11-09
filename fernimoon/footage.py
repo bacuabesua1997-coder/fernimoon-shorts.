@@ -15,7 +15,8 @@ MAX_CANDIDATES_PER_QUERY = 3
 
 
 def select_footage(hits: list, used: set[int], *, query: str | None = None,
-                   location: str | None = None) -> dict | None:
+                   location: str | None = None,
+                   required_phrases: tuple[str, ...] | list[str] | None = None) -> dict | None:
     candidates = []
     for hit in hits:
         if not isinstance(hit, dict) or hit.get("type") != "film" or not isinstance(hit.get("id"), int):
@@ -26,7 +27,10 @@ def select_footage(hits: list, used: set[int], *, query: str | None = None,
             continue
         relevance_score, review = 0, ""
         if query is not None:
-            accepted, relevance_score, review = visual_relevance(query, hit.get("tags", ""), location=location)
+            accepted, relevance_score, review = visual_relevance(
+                query, hit.get("tags", ""), location=location,
+                required_phrases=required_phrases,
+            )
             if not accepted:
                 continue
         if not isinstance(hit.get("duration"), (int, float)) or hit["duration"] < 3:
@@ -87,7 +91,8 @@ def search(query: str, api_key: str, cache: Path, *, force_refresh: bool = False
 
 def collect_footage(scenes: list[dict], api_key: str, work: Path, cache: Path, *,
                     require_relevance: bool = False, historical_context: str = "",
-                    used_ids: set[int] | None = None, scene_offset: int = 0) -> list[dict]:
+                    used_ids: set[int] | None = None, scene_offset: int = 0,
+                    required_phrases: tuple[str, ...] | list[str] | None = None) -> list[dict]:
     used: set[int] = used_ids if used_ids is not None else set()
     failed: set[int] = set()
     refreshed: set[str] = set()
@@ -100,8 +105,10 @@ def collect_footage(scenes: list[dict], api_key: str, work: Path, cache: Path, *
         for query in scene["search_terms"]:
             hits = search(query, api_key, cache)
             for _ in range(MAX_CANDIDATES_PER_QUERY):
-                candidate = select_footage(hits, used | failed, query=query if require_relevance else None,
-                                           location=location)
+                candidate = select_footage(
+                    hits, used | failed, query=query if require_relevance else None,
+                    location=location, required_phrases=required_phrases,
+                )
                 if not candidate:
                     break
                 try:
@@ -122,7 +129,8 @@ def collect_footage(scenes: list[dict], api_key: str, work: Path, cache: Path, *
                             # fully revalidated film URL. Otherwise switch to another clip.
                             fresh = select_footage(
                                 [h for h in hits if isinstance(h, dict) and h.get("id") == candidate["id"]],
-                                used | failed, query=query if require_relevance else None, location=location)
+                                used | failed, query=query if require_relevance else None,
+                                location=location, required_phrases=required_phrases)
                             if fresh and fresh["url"] != candidate["url"]:
                                 try:
                                     download_video(fresh["url"], work / filename)
@@ -142,8 +150,9 @@ def collect_footage(scenes: list[dict], api_key: str, work: Path, cache: Path, *
             if require_relevance and last_error is None:
                 raise PipelineError(
                     f"Pixabay: no context-relevant stock clip for scene {index + 1}. "
-                    "Unrelated subjects were rejected. Use more filmable search terms or provide "
-                    "properly licensed footage rather than silently substituting unrelated visuals.")
+                    "Unrelated subjects were rejected. Required club/venue identity tags: "
+                    f"{', '.join(required_phrases or []) or 'not specified'}. Use more filmable search terms "
+                    "or provide properly licensed footage rather than silently substituting generic visuals.")
             if last_error is not None:
                 raise PipelineError(f"Pixabay: no downloadable real-film candidate for scene {index + 1} after bounded attempts. "
                                     f"Last CDN error: {last_error}") from None

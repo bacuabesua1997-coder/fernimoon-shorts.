@@ -59,8 +59,12 @@ class ConfigurationTests(unittest.TestCase):
                              "ELEVENLABS_VOICE_ID": "voice123", "GEMINI_MODEL": "", "ELEVENLABS_MODEL": ""}, clear=True)
     def test_defaults_and_duration_bounds(self):
         self.assertEqual(Config.from_env().gemini_model, "gemini-2.5-flash")
-        with self.assertRaises(PipelineError):
-            Config.from_env(34)
+        self.assertEqual(Config.from_env().duration, 60)
+        for duration in (30, 45, 60, 75, 90):
+            self.assertEqual(Config.from_env(duration).duration, duration)
+        for duration in (29, 35, 46, 91):
+            with self.assertRaises(PipelineError):
+                Config.from_env(duration)
         os.environ["ELEVENLABS_VOICE_ID"] = "../../bad"
         with self.assertRaises(PipelineError):
             Config.from_env()
@@ -309,6 +313,13 @@ class OutputTests(unittest.TestCase):
             {"codec_type": "audio", "codec_name": "aac", "duration": "40"}]}
         probe.return_value = good
         self.assertEqual(verify_output(Path("video.mp4"), 40)["duration"], 40)
+        for duration in (30, 90):
+            good["format"]["duration"] = str(duration)
+            good["streams"][0]["duration"] = str(duration)
+            good["streams"][1]["duration"] = str(duration)
+            self.assertEqual(verify_output(Path("video.mp4"), duration)["duration"], duration)
+        good["format"]["duration"] = "40"
+        good["streams"][0]["duration"] = "40"
         good["streams"][1]["duration"] = "12"
         with self.assertRaises(PipelineError):
             verify_output(Path("video.mp4"), 40)

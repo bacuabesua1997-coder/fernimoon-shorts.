@@ -20,9 +20,11 @@ class Config:
     story_style: str = "mystery"
     football_api_key: str = field(default="", repr=False)
     mode: str = "documentary"
+    football_format: str = "auto"
 
     @classmethod
-    def from_env(cls, duration: int = 40, mode: str | None = None) -> "Config":
+    def from_env(cls, duration: int = 60, mode: str | None = None,
+                 football_format: str | None = None) -> "Config":
         selected_mode = (mode or os.environ.get("FERNIMOON_MODE", "documentary")).strip().lower()
         if selected_mode not in ("documentary", "football"):
             raise PipelineError("FERNIMOON_MODE must be documentary or football.")
@@ -34,14 +36,21 @@ class Config:
         missing = [name for name, value in values.items() if not value]
         if missing:
             raise PipelineError("Missing GitHub Secrets / environment variables: " + ", ".join(missing))
-        if not 35 <= duration <= 45:
-            raise PipelineError("Duration must be between 35 and 45 seconds.")
+        if duration not in (30, 45, 60, 75, 90):
+            raise PipelineError("Duration must be one of 30, 45, 60, 75 or 90 seconds.")
         voice = values[voice_name]
         gemini = os.environ.get("GEMINI_MODEL", "").strip() or "gemini-2.5-flash"
         eleven = os.environ.get("ELEVENLABS_MODEL", "").strip() or "eleven_multilingual_v2"
         style = os.environ.get("SHORTS_STYLE", "mystery").strip().lower() or "mystery"
         if style not in ("mystery", "history", "science"):
             raise PipelineError("SHORTS_STYLE must be mystery, history or science.")
+        selected_format = (football_format or os.environ.get("FOOTBALL_FORMAT", "auto")).strip().lower()
+        if selected_format not in {
+            "auto", "global_roundup", "breaking_news", "transfer_watch", "match_preview",
+            "match_recap", "tactical_analysis", "player_spotlight", "club_business",
+            "drama", "academy", "history_facts",
+        }:
+            raise PipelineError("FOOTBALL_FORMAT is not a supported editorial format.")
         for label, value in (("voice ID", voice), ("Gemini model", gemini), ("ElevenLabs model", eleven)):
             if not re.fullmatch(r"[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*", value):
                 raise PipelineError(f"Invalid {label}; use an ID, not a URL.")
@@ -56,6 +65,7 @@ class Config:
             story_style=style,
             football_api_key=values.get("FOOTBALL_API_KEY", ""),
             mode=selected_mode,
+            football_format=selected_format,
         )
 
 

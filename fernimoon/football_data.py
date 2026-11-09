@@ -10,6 +10,7 @@ from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
 
 from .config import PipelineError
+from .football_entities import resolve_team_entity, normalize as normalize_team
 from .http import request_json
 
 API_ROOT = "https://v3.football.api-sports.io"
@@ -192,13 +193,20 @@ class FootballAPI:
             raise PipelineError("Football fixture ID must be a positive integer.")
         return self.get("fixtures/events", {"fixture": fixture_id})
 
+    def statistics(self, fixture_id: int) -> list[dict]:
+        if not isinstance(fixture_id, int) or fixture_id <= 0:
+            raise PipelineError("Football fixture ID must be a positive integer.")
+        return self.get("fixtures/statistics", {"fixture": fixture_id})
+
     def standings(self, league_id: int, season: int) -> list[dict]:
         if not all(isinstance(v, int) and v > 0 for v in (league_id, season)):
             raise PipelineError("Football standings require valid league and season IDs.")
         return self.get("standings", {"league": league_id, "season": season})
 
 
-def build_football_context(api_key: str, topic: str, match_date: str | None = None) -> dict:
+def build_football_context(api_key: str, topic: str, match_date: str | None = None,
+                           *, allow_empty: bool = False, include_events: bool = False,
+                           include_statistics: bool = False) -> dict:
     """Build a source-grounded daily/live fixture pack across major competitions."""
     client = FootballAPI(api_key)
     local_now = datetime.now(ZoneInfo(LOCAL_TIMEZONE))
@@ -208,24 +216,44 @@ def build_football_context(api_key: str, topic: str, match_date: str | None = No
         raise PipelineError("Football match date must use YYYY-MM-DD.")
 
     leagues = client.current_major_leagues()
-    if not leagues:
+    if not leagues and not allow_empty:
         raise PipelineError("API-Football returned no active competitions from the global major-league registry.")
     league_by_id = {item["id"]: item for item in leagues if isinstance(item.get("id"), int)}
-    fixtures = client.fixtures(match_date=target_date, live=live)
+    # News-led formats may proceed without fixture coverage; they must not invent
+    # a matchday roundup simply because the provider has no active league records.
+    fixtures = client.fixtures(match_date=target_date, live=live) if league_by_id else []
     selected = [item for item in fixtures if item["league"].get("id") in league_by_id]
 
-    # Narrow to a named team or competition only when the topic clearly matches.
+    # A named club is a hard scope constraint. If that club has no fixture
+    # today, return no fixture rather than silently switching to other clubs.
     topic_fold = _fold(topic)
-    focused = []
-    for item in selected:
-        names = [
-            _fold(item["league"].get("name", "")),
-            _fold(item["home"].get("name", "")),
-            _fold(item["away"].get("name", "")),
-        ]
-        if any(name and (name in topic_fold or topic_fold in name) for name in names):
-            focused.append(item)
-    if focused:
+    entity = resolve_team_entity(topic)
+    generic_terms = {"global", "world", "football", "soccer", "roundup", "news",
+                     "latest", "live", "scores", "score", "today", "all", "matches"}
+    specific_topic = any(token not in generic_terms for token in topic_fold.split())
+    if entity:
+        canonical, entity_data = entity
+        aliases = [normalize_team(alias) for alias in entity_data["aliases"]]
+        focused = []
+        for item in selected:
+            names = [
+                normalize_team((item.get("home") or {}).get("name", "")),
+                normalize_team((item.get("away") or {}).get("name", "")),
+            ]
+            if any(alias == name or alias in name or name in alias
+                   for alias in aliases for name in names if name):
+                focused.append(item)
+        selected = focused
+    elif specific_topic:
+        focused = []
+        for item in selected:
+            names = [
+                _fold(item["league"].get("name", "")),
+                _fold(item["home"].get("name", "")),
+                _fold(item["away"].get("name", "")),
+            ]
+            if any(name and (name in topic_fold or topic_fold in name) for name in names):
+                focused.append(item)
         selected = focused
 
     selected.sort(key=lambda item: (
@@ -233,12 +261,39 @@ def build_football_context(api_key: str, topic: str, match_date: str | None = No
         item.get("timestamp") or 0,
     ))
     selected = selected[:40]
-    if not selected:
+    if not selected and not allow_empty:
         when = "live right now" if live else f"on {target_date}"
         raise PipelineError(
             f"No fixtures from the configured major competitions were returned {when}. "
             "Choose another match date or remove the live-only topic filter."
         )
+
+    # Enrich only the most relevant fixtures and only when the competition
+    # coverage flags advertise the requested endpoint. This controls API quota.
+    for fixture in selected[:3]:
+        league_info = league_by_id.get(fixture["league"].get("id"), {})
+        coverage = (league_info.get("coverage") or {}).get("fixtures") or {}
+        fixture_id = fixture.get("fixture_id")
+        if not isinstance(fixture_id, int):
+            continue
+        if include_events and coverage.get("events") is True:
+            raw_events = client.events(fixture_id)
+            fixture["events"] = [{
+                "elapsed": (event.get("time") or {}).get("elapsed"),
+                "extra": (event.get("time") or {}).get("extra"),
+                "team": (event.get("team") or {}).get("name"),
+                "player": (event.get("player") or {}).get("name"),
+                "assist": (event.get("assist") or {}).get("name"),
+                "type": event.get("type"),
+                "detail": event.get("detail"),
+                "comments": event.get("comments"),
+            } for event in raw_events if isinstance(event, dict)]
+        if include_statistics and coverage.get("statistics") is True:
+            raw_stats = client.statistics(fixture_id)
+            fixture["statistics"] = [{
+                "team": (item.get("team") or {}).get("name"),
+                "statistics": item.get("statistics") or [],
+            } for item in raw_stats if isinstance(item, dict)]
 
     competition_ids = {item["league"]["id"] for item in selected}
     return {
@@ -246,6 +301,7 @@ def build_football_context(api_key: str, topic: str, match_date: str | None = No
         "retrieved_at": local_now.isoformat(),
         "timezone": LOCAL_TIMEZONE,
         "query": topic,
+        "target_entity": entity[0] if entity else None,
         "match_date": "live" if live else target_date,
         "competitions": [item for item in leagues if item["id"] in competition_ids],
         "fixtures": selected,

@@ -7,6 +7,10 @@ from unittest.mock import patch
 from fernimoon.captions import make_ass
 from fernimoon.config import Config, PipelineError
 from fernimoon.football_data import FootballAPI, build_football_context, is_major_competition
+from fernimoon.football_entities import (
+    matches_visual_identity, resolve_team_entity, visual_query_for_scene,
+)
+from fernimoon.footage import select_footage
 from fernimoon.speech import synthesize, Word
 
 
@@ -109,7 +113,48 @@ class FootballCompetitionTests(unittest.TestCase):
         self.assertTrue(context["retrieved_at"])
         self.assertEqual(context["match_date"], "2026-11-08")
 
+    def test_named_club_with_no_fixture_does_not_fall_back_to_global_matches(self):
+        leagues = [{"id": 39, "name": "Premier League", "season": 2026}]
+        fixtures = [
+            {"fixture_id": 10, "timestamp": 1, "status": "FT",
+             "league": {"id": 39, "name": "Premier League"},
+             "home": {"name": "Arsenal"}, "away": {"name": "Chelsea"}},
+            {"fixture_id": 11, "timestamp": 2, "status": "FT",
+             "league": {"id": 140, "name": "La Liga"},
+             "home": {"name": "Barcelona"}, "away": {"name": "Real Madrid"}},
+        ]
+        with patch.object(FootballAPI, "current_major_leagues", return_value=leagues), patch.object(FootballAPI, "fixtures", return_value=fixtures):
+            context = build_football_context(
+                "secret", "Manchester United", "2026-11-08", allow_empty=True
+            )
+        self.assertEqual(context["fixtures"], [])
+        self.assertEqual(context["competitions"], [])
 
+
+class ClubSpecificVisualTests(unittest.TestCase):
+    def test_manchester_united_scene_searches_are_club_specific(self):
+        terms = visual_query_for_scene(
+            "Manchester United", ["football training", "soccer supporters"], 1
+        )
+        self.assertTrue(all("manchester united" in term.lower() for term in terms))
+        self.assertTrue(any("old trafford" in term.lower() for term in terms))
+
+    def test_generic_football_stock_is_rejected_for_manchester_united(self):
+        resolved = resolve_team_entity("Manchester United")
+        self.assertIsNotNone(resolved)
+        entity = resolved[1]
+        generic_hit = {
+            "type": "film", "id": 1001, "tags": "football soccer stadium fans",
+            "duration": 12, "videos": {},
+        }
+        self.assertFalse(matches_visual_identity(generic_hit["tags"], entity))
+        self.assertIsNone(select_footage(
+            [generic_hit], set(), query="Manchester United football stadium",
+            required_phrases=entity["visual_phrases"],
+        ))
+        self.assertTrue(matches_visual_identity("Old Trafford Manchester United stadium", entity))
+
+    
 class FootballPresentationTests(unittest.TestCase):
     def test_ass_has_no_persistent_channel_watermark(self):
         ass = make_ass([Word("Goal!", 0.1, 0.8)], 40)
