@@ -313,6 +313,13 @@ class OutputTests(unittest.TestCase):
             {"codec_type": "audio", "codec_name": "aac", "duration": "40"}]}
         probe.return_value = good
         self.assertEqual(verify_output(Path("video.mp4"), 40)["duration"], 40)
+        for duration in (30, 90):
+            good["format"]["duration"] = str(duration)
+            good["streams"][0]["duration"] = str(duration)
+            good["streams"][1]["duration"] = str(duration)
+            self.assertEqual(verify_output(Path("video.mp4"), duration)["duration"], duration)
+        good["format"]["duration"] = "40"
+        good["streams"][0]["duration"] = "40"
         good["streams"][1]["duration"] = "12"
         with self.assertRaises(PipelineError):
             verify_output(Path("video.mp4"), 40)
