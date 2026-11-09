@@ -1,4 +1,4 @@
-"""Orchestrate script → real footage → timestamped voice → vertical MP4."""
+"""Orchestrate the documentary and football production paths."""
 import json
 import tempfile
 from pathlib import Path
@@ -17,7 +17,14 @@ def write_json(path: Path, data) -> None:
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
-def create_short(topic: str, config: Config, output: Path) -> Path:
+def create_short(topic: str, config: Config, output: Path,
+                 match_date: str | None = None) -> Path:
+    if config.mode == "football":
+        from .football_pipeline import create_football_short
+        return create_football_short(topic, config, output, match_date=match_date)
+    if config.mode != "documentary":
+        raise PipelineError("FERNIMOON_MODE must be documentary or football.")
+
     topic = validate_topic(topic)
     preflight()
     output.mkdir(parents=True, exist_ok=True)

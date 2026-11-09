@@ -7,6 +7,18 @@ on:
         description: "Chủ đề video (kịch bản và giọng đọc sẽ bằng tiếng Anh)"
         required: true
         type: string
+      mode:
+        description: "Chế độ sản xuất"
+        required: true
+        default: documentary
+        type: choice
+        options:
+          - documentary
+          - football
+      match_date:
+        description: "Ngày thi đấu YYYY-MM-DD; bỏ trống để dùng hôm nay"
+        required: false
+        type: string
       duration:
         description: "Thời lượng video (giây)"
         required: true
@@ -53,6 +65,9 @@ jobs:
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
+          FOOTBALL_ELEVENLABS_VOICE_ID: ${{ secrets.FOOTBALL_ELEVENLABS_VOICE_ID }}
+          FOOTBALL_API_KEY: ${{ secrets.FOOTBALL_API_KEY }}
+          FERNIMOON_MODE: ${{ github.event_name == 'push' && 'documentary' || inputs.mode }}
           SHORTS_TOPIC: ${{ github.event_name == 'push' && 'The Origin of the Black-Eyed Children Legend' || inputs.topic }}
           SHORTS_STYLE: ${{ github.event_name == 'push' && 'mystery' || inputs.story_style }}
         run: |
@@ -60,7 +75,7 @@ jobs:
           import os
           from fernimoon.config import Config, PipelineError, validate_topic
           try:
-              Config.from_env()
+              Config.from_env(mode=os.environ.get('FERNIMOON_MODE', 'documentary'))
               validate_topic(os.environ['SHORTS_TOPIC'])
           except PipelineError as error:
               raise SystemExit(str(error)) from None
@@ -86,18 +101,22 @@ jobs:
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
+          FOOTBALL_ELEVENLABS_VOICE_ID: ${{ secrets.FOOTBALL_ELEVENLABS_VOICE_ID }}
+          FOOTBALL_API_KEY: ${{ secrets.FOOTBALL_API_KEY }}
+          FERNIMOON_MODE: ${{ github.event_name == 'push' && 'documentary' || inputs.mode }}
+          FOOTBALL_DATE: ${{ inputs.match_date }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           ELEVENLABS_MODEL: ${{ vars.ELEVENLABS_MODEL }}
           SHORTS_TOPIC: ${{ github.event_name == 'push' && 'The Origin of the Black-Eyed Children Legend' || inputs.topic }}
           SHORTS_DURATION: ${{ github.event_name == 'push' && '40' || inputs.duration }}
           SHORTS_STYLE: ${{ github.event_name == 'push' && 'mystery' || inputs.story_style }}
         # Treat topic as an environment value, never as interpolated shell code.
-        run: python -m fernimoon --duration "$SHORTS_DURATION"
+        run: python -m fernimoon --mode "$FERNIMOON_MODE" --duration "$SHORTS_DURATION" --date "$FOOTBALL_DATE"
       - name: Download MP4 and companion files
         uses: actions/upload-artifact@v4
         with:
           name: FERNIMOON-STUDIO-${{ github.run_number }}
-          path: output/fernimoon/short-*/delivery/*
+          path: output/fernimoon/*/delivery/*
           if-no-files-found: error
           retention-days: 14
       - name: Add download instructions
@@ -105,7 +124,8 @@ jobs:
           cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
           ## FERNIMOON STUDIO
           Video đã hoàn tất: **1080 × 1920, H.264/AAC, phụ đề động theo giọng đọc**.
-          Phong cách mới: `mystery`, `history` hoặc `science`. Hook mở đầu ngắn, nội dung xây dựng cao trào và kết thúc rõ ràng.
+          Documentary Mode giữ các phong cách mystery, history và science. Football Mode tạo bản tin bóng đá tiếng Anh từ dữ liệu trận đấu.
+          Football Mode dùng giọng nam trầm riêng và không có watermark kênh chạy xuyên video.
           Mở **Artifacts** ở cuối trang lần chạy này, tải gói `FERNIMOON-STUDIO-*` và giải nén MP4.
           Gói cũng có phụ đề SRT/ASS, kịch bản, tiêu đề và nguồn video Pixabay.
           Xem lại nội dung, phần crop dọc và nguồn tư liệu trước khi đăng YouTube.
