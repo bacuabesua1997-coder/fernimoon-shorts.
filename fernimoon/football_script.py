@@ -4,7 +4,7 @@ import json
 from .config import Config, PipelineError
 from .http import request_json
 from .script import SCRIPT_SCHEMA, validate_script
-from .football_entities import resolve_team_entity, is_entity_reference, visual_query_for_scene
+from .football_entities import TEAM_ENTITIES, resolve_team_entity, is_entity_reference, visual_query_for_scene
 
 def enforce_team_topic_lock(script: dict, topic: str, facts: list[dict]) -> dict:
     """Reject scripts and scene evidence that drift away from a named club."""
@@ -39,6 +39,20 @@ def enforce_team_topic_lock(script: dict, topic: str, facts: list[dict]) -> dict
                 f"Gemini: scene {index + 1} cites no evidence specifically about {canonical}; "
                 "unrelated global football stories are rejected."
             )
+        for other_canonical, other_entity in TEAM_ENTITIES.items():
+            if other_canonical == canonical or not is_entity_reference(scene.get("narration", ""), other_entity):
+                continue
+            if not any(
+                is_entity_reference(
+                    str(fact.get("summary", "")) + " " + str(fact.get("title", "")),
+                    other_entity,
+                )
+                for fact in cited
+            ):
+                raise PipelineError(
+                    f"Gemini: scene {index + 1} introduces unrelated club {other_canonical} "
+                    f"without supporting evidence in the {canonical} story."
+                )
         scene["search_terms"] = visual_query_for_scene(
             topic, scene.get("search_terms") or [], index
         )
