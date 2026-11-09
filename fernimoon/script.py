@@ -51,7 +51,8 @@ def word_count(text: str) -> int:
     return len(text.split())
 
 
-def validate_script(data: dict, duration: int, approved_source_ids: set[str] | None = None,\n                    approved_fact_ids: set[str] | None = None) -> dict:
+def validate_script(data: dict, duration: int, approved_source_ids: set[str] | None = None,
+                    approved_fact_ids: set[str] | None = None) -> dict:
     if not isinstance(data, dict):
         raise PipelineError("Gemini: script must be an object.")
     for key, limit in (("title", 100), ("description", 1500)):
