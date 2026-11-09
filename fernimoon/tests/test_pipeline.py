@@ -255,7 +255,7 @@ class CaptionTests(unittest.TestCase):
     def test_ass_highlight_and_srt_follow_spoken_words(self):
         words = [Word("Hello", 1.25, 1.8), Word("ocean!", 2, 2.6)]
         ass = make_ass(words, 40)
-        self.assertIn("FERNIMOON STUDIO", ass)
+        self.assertNotIn("FERNIMOON STUDIO", ass)
         self.assertIn("0:00:01.25", ass)
         self.assertIn(r"\c&H00E8FF&", ass)
         self.assertIn("Style: Hook", ass)
