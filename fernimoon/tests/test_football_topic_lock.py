@@ -1,4 +1,6 @@
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from fernimoon.config import PipelineError
@@ -7,6 +9,7 @@ from fernimoon.football_entities import resolve_team_entity, visual_query_for_sc
 from fernimoon.football_news import _matches_topic
 from fernimoon.relevance import visual_relevance
 from fernimoon.football_script import enforce_team_topic_lock
+from fernimoon.footage import collect_footage
 
 
 class ManchesterUnitedTopicLockTests(unittest.TestCase):
@@ -123,6 +126,29 @@ class ManchesterUnitedTopicLockTests(unittest.TestCase):
         facts = [{"id": "barca-news", "summary": "Barcelona beat Atletico Madrid."}]
         with self.assertRaisesRegex(PipelineError, "cites no evidence specifically"):
             enforce_team_topic_lock(script, "Manchester United", facts)
+
+    @patch("fernimoon.footage.download_video")
+    @patch("fernimoon.footage.search")
+    def test_pixabay_generic_soccer_clip_is_not_downloaded_for_manchester_united(self, search, download):
+        search.return_value = [{
+            "id": 77,
+            "type": "film",
+            "tags": "football, soccer, fans, stadium, players",
+            "duration": 12,
+            "videos": {"medium": {
+                "url": "https://cdn.pixabay.com/video/77.mp4",
+                "width": 1280, "height": 720, "size": 1024,
+            }},
+        }]
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(PipelineError, "no context-relevant stock clip"):
+                collect_footage(
+                    [{"search_terms": ["Manchester United football fans"]}],
+                    "fake-key", Path(tmp), Path(tmp) / "cache",
+                    require_relevance=True,
+                    required_phrases=("Manchester United", "Man Utd", "MUFC", "Old Trafford", "Carrington"),
+                )
+        download.assert_not_called()
 
 
 if __name__ == "__main__":
