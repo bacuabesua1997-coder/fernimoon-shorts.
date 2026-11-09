@@ -287,6 +287,12 @@ def is_entity_reference(text: str, entity: dict) -> bool:
     return any(" " + normalize(alias) + " " in folded for alias in entity["aliases"])
 
 
+def matches_visual_identity(tags: str, entity: dict) -> bool:
+    """Require a club name, club abbreviation, or distinctive venue in stock tags."""
+    folded = " " + normalize(tags) + " "
+    return any(" " + normalize(phrase) + " " in folded for phrase in entity["visual_phrases"])
+
+
 def visual_query_for_scene(topic: str, search_terms: list[str], scene_index: int) -> list[str]:
     resolved = resolve_team_entity(topic)
     if not resolved:
