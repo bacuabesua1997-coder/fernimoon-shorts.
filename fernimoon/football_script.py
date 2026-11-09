@@ -158,13 +158,14 @@ def generate_football_script(topic: str, config: Config, football_context: dict,
             script = validate_script(
                 parsed, config.duration, approved_fact_ids=approved_fact_ids
             )
+            script = enforce_team_topic_lock(script, topic, facts)
             for scene in script["scenes"]:
                 if not any(("football" in term.lower() or "soccer" in term.lower())
                            for term in scene["search_terms"]):
                     raise PipelineError(
                         "Gemini: every football scene needs football/soccer-specific visual search terms."
                     )
-            return enforce_team_topic_lock(script, topic, facts)
+            return script
         except (KeyError, IndexError, TypeError, ValueError):
             error = "Gemini: missing or malformed structured football script."
         except PipelineError as exc:
