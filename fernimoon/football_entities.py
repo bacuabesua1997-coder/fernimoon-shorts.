@@ -11,7 +11,7 @@ def normalize(value: str) -> str:
 # or a distinctive club venue. It never substitutes generic football B-roll.
 TEAM_ENTITIES = {
     "manchester united": {
-        "aliases": ("manchester united", "man united", "man utd", "mufc"),
+        "aliases": ("manchester united", "man united", "man utd", "mufc", "red devils"),
         "visual_phrases": ("manchester united", "man utd", "mufc", "old trafford", "carrington"),
         "visual_queries": (
             "Manchester United football team",
