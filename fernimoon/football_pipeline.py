@@ -5,7 +5,7 @@ from pathlib import Path
 
 from .captions import make_ass, make_srt
 from .config import Config, PipelineError, validate_topic
-from .football_entities import resolve_team_entity, visual_query_for_scene
+from .football_entities import resolve_team_entity
 from .football_research import build_football_research
 from .football_script import generate_football_script
 from .footage import collect_footage
@@ -39,9 +39,7 @@ def create_football_short(topic: str, config: Config, output: Path,
     script = generate_football_script(topic, config, context, editorial_format=editorial_format)
     resolved_entity = resolve_team_entity(topic)
     if resolved_entity:
-        canonical, entity_data = resolved_entity
-        for index, scene in enumerate(script["scenes"]):
-            scene["search_terms"] = visual_query_for_scene(topic, scene["search_terms"], index)
+        canonical, _entity_data = resolved_entity
         print(
             f"Named-club visual lock enabled: {canonical}. "
             "Generic football stock without club/venue identity will be rejected.",
