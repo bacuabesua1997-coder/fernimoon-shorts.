@@ -105,7 +105,7 @@ class FootballNewsParsingTests(unittest.TestCase):
             rss("BBC Sport", "https://www.bbc.co.uk/sport/football/123", title, "Report one."),
             rss("The Guardian", "https://www.theguardian.com/football/2026/nov/08/123", title, "Report two."),
         ]
-        result = collect_football_news("Manchester United", "transfer_watch")
+        result = collect_football_news("football", "transfer_watch")
         self.assertEqual(result["selected_count"], 2)
         self.assertEqual({item["publisher_count"] for item in result["articles"]}, {2})
         self.assertTrue(all(item["related_source_ids"] for item in result["articles"]))
