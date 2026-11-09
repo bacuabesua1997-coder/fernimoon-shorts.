@@ -141,9 +141,9 @@ def collect_footage(scenes: list[dict], api_key: str, work: Path, cache: Path, *
         if not chosen:
             if require_relevance and last_error is None:
                 raise PipelineError(
-                    f"Pixabay: no context-relevant historical stock clip for scene {index + 1}. "
-                    "Unrelated countries or subjects were rejected. Use a filmable scene or "
-                    "licensed archival media rather than silently substituting unrelated footage.")
+                    f"Pixabay: no context-relevant stock clip for scene {index + 1}. "
+                    "Unrelated subjects were rejected. Use more filmable search terms or provide "
+                    "properly licensed footage rather than silently substituting unrelated visuals.")
             if last_error is not None:
                 raise PipelineError(f"Pixabay: no downloadable real-film candidate for scene {index + 1} after bounded attempts. "
                                     f"Last CDN error: {last_error}") from None
