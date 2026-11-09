@@ -4,6 +4,7 @@ import tempfile
 from pathlib import Path
 
 from .captions import make_ass, make_srt
+from .commons import find_and_download
 from .config import Config, PipelineError, validate_topic
 from .football_entities import resolve_team_entity
 from .football_research import build_football_research
@@ -16,6 +17,48 @@ from .speech import scene_boundaries, synthesize
 
 def _write_json(path: Path, data) -> None:
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+
+
+def collect_football_visuals(scenes: list[dict], api_key: str, work: Path,
+                             cache: Path, required_phrases: list[str] | None = None) -> list[dict]:
+    """Prefer real CC0/PD Commons media, then identity-matched Pixabay stock."""
+    used_commons: set[str] = set()
+    used_pixabay: set[int] = set()
+    results = []
+    for index, scene in enumerate(scenes):
+        media = find_and_download(
+            scene["search_terms"],
+            "real",
+            work,
+            index,
+            used_commons,
+            required_phrases=required_phrases,
+        )
+        if media:
+            media["priority_tier"] = 1
+        else:
+            fallback = collect_footage(
+                [scene],
+                api_key,
+                work,
+                cache,
+                require_relevance=True,
+                used_ids=used_pixabay,
+                scene_offset=index,
+                required_phrases=required_phrases,
+            )
+            media = fallback[0]
+            media["priority_tier"] = 2
+        media["scene"] = index + 1
+        results.append(media)
+        print(
+            f"Football visual {index + 1}/{len(scenes)}: "
+            f"{media.get('source')} ({media.get('kind')}, priority {media['priority_tier']}).",
+            flush=True,
+        )
+    return results
 
 
 def create_football_short(topic: str, config: Config, output: Path,
@@ -50,9 +93,8 @@ def create_football_short(topic: str, config: Config, output: Path,
 
     print("Finding licensed, relevant football stock footage (not match highlights)…", flush=True)
     required_visual_phrases = context.get("visual_entity_phrases") or None
-    sources = collect_footage(
+    sources = collect_football_visuals(
         script["scenes"], config.pixabay_key, work, output / "pixabay-cache",
-        require_relevance=True,
         required_phrases=required_visual_phrases,
     )
     _write_json(work / "sources.json", sources)
@@ -106,7 +148,8 @@ def create_football_short(topic: str, config: Config, output: Path,
         "competition_count": len(context["competitions"]),
         "fixture_count": len(context["fixtures"]),
         "visual_policy": (
-            "Club-identity-matched licensed illustrative stock footage only; no generic football fallback. "
+            "Prefer club-identity-matched CC0/Public Domain Wikimedia real photos/videos; otherwise use "
+            "club-identity-matched licensed Pixabay illustrative B-roll. No generic football fallback. "
             "Never represented as actual match highlights."
         ),
         "sound_used": bool(sound),
@@ -130,12 +173,15 @@ def create_football_short(topic: str, config: Config, output: Path,
     credits.extend([
         "",
         "VISUAL SOURCES:",
-        "Pixabay stock footage is illustrative B-roll, not footage of the specific fixture.",
+        "Wikimedia Commons CC0/Public Domain media is preferred; Pixabay clips are illustrative B-roll, "
+        "not footage of the specific fixture.",
     ])
     for index, source in enumerate(sources, 1):
         credits.append(
-            f"{index}. Pixabay stock footage | {source.get('page_url', '')} | "
-            f"{source.get('creator', '')} | {source.get('license_url', '')}"
+            f"{index}. {source.get('source', 'Unknown source')} | {source.get('kind', 'media')} | "
+            f"{source.get('title') or source.get('tags', '')} | {source.get('page_url', '')} | "
+            f"{source.get('creator', '')} | {source.get('license') or 'Pixabay license'} | "
+            f"{source.get('license_url', '')}"
         )
     if sound:
         credits.append("Sound moment: " + " | ".join(str(sound.get(key, "")) for key in
