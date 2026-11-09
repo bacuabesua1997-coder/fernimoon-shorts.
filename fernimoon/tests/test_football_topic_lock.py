@@ -163,6 +163,16 @@ class ManchesterUnitedTopicLockTests(unittest.TestCase):
         with self.assertRaisesRegex(PipelineError, "introduces unrelated club barcelona"):
             enforce_team_topic_lock(script, "Manchester United", facts)
 
+    @patch.object(FootballAPI, "fixtures")
+    @patch.object(FootballAPI, "current_major_leagues", return_value=[])
+    def test_news_led_research_can_continue_without_fixture_coverage(self, leagues, fixtures):
+        context = build_football_context(
+            "secret", "Manchester United", "2026-11-08", allow_empty=True
+        )
+        self.assertEqual(context["fixtures"], [])
+        self.assertEqual(context["competitions"], [])
+        fixtures.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()
