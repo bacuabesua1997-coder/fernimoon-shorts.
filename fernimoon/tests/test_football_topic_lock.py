@@ -150,6 +150,19 @@ class ManchesterUnitedTopicLockTests(unittest.TestCase):
                 )
         download.assert_not_called()
 
+    def test_unrelated_club_mention_without_supporting_fact_is_rejected(self):
+        script = {
+            "title": "Manchester United's Defining Week",
+            "scenes": [{
+                "narration": "Manchester United face Barcelona in another European showdown.",
+                "fact_ids": ["mu-news"],
+                "search_terms": ["football training ground", "soccer supporters"],
+            }],
+        }
+        facts = [{"id": "mu-news", "summary": "Manchester United are assessing their squad."}]
+        with self.assertRaisesRegex(PipelineError, "introduces unrelated club barcelona"):
+            enforce_team_topic_lock(script, "Manchester United", facts)
+
 
 if __name__ == "__main__":
     unittest.main()
