@@ -18,6 +18,7 @@ import time
 import xml.etree.ElementTree as ET
 
 from .config import PipelineError
+from .football_entities import TEAM_ENTITIES, normalize
 
 MAX_FEED_BYTES = 2 * 1024 * 1024
 FEED_TIMEOUT = 15
@@ -53,36 +54,6 @@ CATEGORY_TERMS = {
                          "midfielder", "defender", "goalkeeper", "form"),
     "history_facts": ("history", "historic", "anniversary", "legend", "record",
                       "classic", "decade", "years ago", "first ever"),
-}
-
-TEAM_ALIASES = {
-    "manchester united": ("manchester united", "man united", "man utd", "mufc"),
-    "manchester city": ("manchester city", "man city", "mcfc"),
-    "tottenham": ("tottenham", "spurs"),
-    "newcastle united": ("newcastle united", "newcastle"),
-    "west ham": ("west ham united", "west ham"),
-    "nottingham forest": ("nottingham forest", "nottm forest"),
-    "real madrid": ("real madrid",),
-    "atletico madrid": ("atletico madrid", "atletico"),
-    "barcelona": ("barcelona", "barca"),
-    "bayern munich": ("bayern munich", "bayern"),
-    "borussia dortmund": ("borussia dortmund", "dortmund"),
-    "paris saint germain": ("paris saint germain", "paris saint-germain", "psg"),
-    "inter milan": ("inter milan", "internazionale", "inter"),
-    "ac milan": ("ac milan", "milan"),
-    "juventus": ("juventus", "juve"),
-    "bayer leverkusen": ("bayer leverkusen", "leverkusen"),
-    "rb leipzig": ("rb leipzig", "leipzig"),
-    "ajax": ("ajax",),
-    "benfica": ("benfica",),
-    "porto": ("porto",),
-    "sporting cp": ("sporting cp", "sporting lisbon"),
-    "al nassr": ("al nassr",),
-    "al hilal": ("al hilal",),
-    "inter miami": ("inter miami",),
-    "flamengo": ("flamengo",),
-    "boca juniors": ("boca juniors",),
-    "river plate": ("river plate",),
 }
 
 GENERIC_TOPIC_TERMS = {
@@ -205,14 +176,14 @@ def _published(value: str) -> str | None:
 
 
 def _normalize(value: str) -> str:
-    return " ".join(re.sub(r"[^a-z0-9]+", " ", (value or "").lower()).split())
+    return normalize(value)
 
 
 def _topic_aliases(topic: str) -> list[str]:
-    folded = _normalize(topic)
-    for canonical, aliases in TEAM_ALIASES.items():
-        if canonical in folded or any(alias in folded for alias in aliases):
-            return list(aliases)
+    folded = " " + _normalize(topic) + " "
+    for canonical, entity in TEAM_ENTITIES.items():
+        if any(" " + _normalize(alias) + " " in folded for alias in entity["aliases"]):
+            return list(entity["aliases"])
     meaningful = [word for word in folded.split() if word not in GENERIC_TOPIC_TERMS]
     return [" ".join(meaningful)] if meaningful else []
 
@@ -221,8 +192,8 @@ def _matches_topic(article: dict, topic: str) -> bool:
     aliases = _topic_aliases(topic)
     if not aliases:
         return True
-    text = _normalize(article["title"] + " " + article["summary"])
-    return any(_normalize(alias) in text for alias in aliases)
+    text = " " + _normalize(article["title"] + " " + article["summary"]) + " "
+    return any(" " + _normalize(alias) + " " in text for alias in aliases)
 
 
 def _matches_format(article: dict, editorial_format: str) -> bool:
