@@ -49,3 +49,25 @@ python -m fernimoon --mode football --topic "Live global football scores"
 API-Football documents coverage per competition and season. A competition may not provide all events, lineups, player statistics or live scores, and provider updates can lag the live event. The script generator therefore may only state facts present in the retrieved payload. If no major fixtures are returned for the requested date, the pipeline stops rather than inventing a roundup.
 
 This first implementation covers global major-competition fixture/live-score roundups. Match events, standings, player profiles, transfer-news verification, richer tactical analysis and authorized match-highlight ingestion are planned as separate adapters and workflows.
+
+## Editorial formats and next architecture layers
+
+The long-term Football Mode uses one shared data and render core with separate editorial recipes:
+
+| Format | Required data | Editorial output |
+|---|---|---|
+| Global roundup | Fixtures, scores, competition, match state | Biggest stories across the matchday |
+| Match preview / recap | Fixture, events, lineups where covered, recent form | One match, one central storyline |
+| Tactical analysis | Events, team statistics, lineups and formations | Evidence-led tactical explanation; interpretation clearly separated from facts |
+| Player spotlight | Player profile, teams, season statistics, honours | Career arc, current form and defining strengths |
+| Transfer / drama | Official club statements plus multiple reputable news reports | Verified timeline, confirmed facts versus reported claims |
+| Highlights / key moments | Licensed or user-owned match footage plus verified event timestamps | Short visual recap with source and rights metadata |
+
+The next adapters should be isolated behind provider interfaces:
+- Football data: fixtures, events, standings, team/player statistics, player profiles, transfers and injuries. Check the competition's coverage flags before requesting or narrating a field.
+- Football news: RSS/official club and competition announcements first, then reputable publishers. Transfer or controversy claims require independent corroboration and publication timestamps.
+- Media rights: user-owned clips, direct licenses, or media whose reuse terms explicitly allow the intended use. Do not rip broadcast feeds, paywalled video, YouTube highlights or social clips. Pixabay is only illustrative B-roll in the current implementation.
+- Editorial ledger: every factual sentence maps to one or more retrieved records or article sources; uncertainty and opinion are labeled.
+- Visual renderer: score cards, match timelines, player/stat cards, tactical boards and scene-specific captions. No always-on channel watermark; if branding is wanted later, use a brief end slate only.
+
+The first code increment deliberately implements the fixture/live-score vertical slice before adding news and highlight ingestion. This avoids presenting unverified transfer rumours or copyrighted match footage as source material.
