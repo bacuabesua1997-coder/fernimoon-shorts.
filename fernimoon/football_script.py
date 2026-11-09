@@ -4,6 +4,7 @@ import json
 from .config import Config, PipelineError
 from .http import request_json
 from .script import SCRIPT_SCHEMA, validate_script
+from .football_entities import resolve_team_entity, is_entity_reference, visual_query_for_scene
 
 FORMAT_GUIDANCE = {
     "auto": "Choose the strongest well-supported story angle from the available news and match evidence.",
@@ -28,6 +29,18 @@ def generate_football_script(topic: str, config: Config, football_context: dict,
         raise PipelineError("Gemini: unsupported football editorial format.")
     facts = football_context.get("fact_index") or []
     approved_fact_ids = {item.get("id") for item in facts if isinstance(item, dict) and item.get("id")}
+    target_entity = resolve_team_entity(topic)
+    entity_instruction = ""
+    if target_entity:
+        canonical, entity_data = target_entity
+        entity_instruction = (
+            f" HARD TOPIC LOCK: this video is ONLY about {canonical}. This is not a global roundup. "
+            f"Use the club's own news, matches and context only. Opponents may appear only as context "
+            f"for a {canonical} story. The title and opening scene MUST explicitly name {canonical} "
+            f"or one of these aliases: {', '.join(entity_data['aliases'])}. "
+            "Never pivot to unrelated clubs or matches. "
+            "The visual search terms will be anchored to the club's identity and distinctive venues."
+        )
     if not approved_fact_ids:
         raise PipelineError("Gemini: no approved football facts were supplied; refusing to invent a story.")
 
@@ -78,6 +91,11 @@ def generate_football_script(topic: str, config: Config, football_context: dict,
                 "systemInstruction": {"parts": [{"text": system}]},
                 "contents": [{"role": "user", "parts": [{"text": json.dumps({
                     "topic": topic,
+                    "target_entity": (
+                        {"canonical": target_entity[0], "aliases": list(target_entity[1]["aliases"]),
+                         "visual_identity": list(target_entity[1]["visual_phrases"])}
+                        if target_entity else None
+                    ),
                     "editorial_format": editorial_format,
                     "verified_football_research": football_context,
                     "editorial_instruction": (
@@ -100,12 +118,41 @@ def generate_football_script(topic: str, config: Config, football_context: dict,
             script = validate_script(
                 parsed, config.duration, approved_fact_ids=approved_fact_ids
             )
-            for scene in script["scenes"]:
+            for index, scene in enumerate(script["scenes"]):
                 if not any(("football" in term.lower() or "soccer" in term.lower())
                            for term in scene["search_terms"]):
                     raise PipelineError(
                         "Gemini: every football scene needs football/soccer-specific visual search terms."
                     )
+                if target_entity:
+                    scene["search_terms"] = visual_query_for_scene(
+                        topic, scene["search_terms"], index
+                    )
+            if target_entity:
+                canonical, entity_data = target_entity
+                if not is_entity_reference(script["title"], entity_data):
+                    raise PipelineError(
+                        f"Gemini: title must explicitly identify {canonical}; generic football titles are rejected."
+                    )
+                if not is_entity_reference(script["scenes"][0]["narration"], entity_data):
+                    raise PipelineError(
+                        f"Gemini: opening hook must explicitly name {canonical}; topic drift is rejected."
+                    )
+                fact_by_id = {item["id"]: item for item in facts if isinstance(item, dict) and item.get("id")}
+                for scene in script["scenes"]:
+                    cited = [fact_by_id[fid] for fid in scene["fact_ids"]]
+                    if not any(
+                        is_entity_reference(
+                            str(fact.get("summary", "")) + " " + str(fact.get("title", "")),
+                            entity_data,
+                        )
+                        for fact in cited
+                    ):
+                        raise PipelineError(
+                            f"Gemini: scene cites no evidence specifically about {canonical}; "
+                            "unrelated global football stories are rejected."
+                        )
+                script["target_entity"] = canonical
             return script
         except (KeyError, IndexError, TypeError, ValueError):
             error = "Gemini: missing or malformed structured football script."
