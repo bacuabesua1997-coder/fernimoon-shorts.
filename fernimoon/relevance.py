@@ -13,6 +13,7 @@ dark darkness night daytime bright cinematic dramatic footage video film
 flying walking moving running slow fast mysterious spooky haunting
 sunset sunrise sky clouds cloud cloudy beautiful view landscape
 closeup close up real realistic scene nature shot background
+football soccer sport sports match game team teams club player players fan fans stadium pitch field ball
 """.split())
 
 # Never use Japanese, Czech or Chinese landmark footage as Vietnamese archival imagery.
@@ -54,7 +55,8 @@ def target_location(context: str) -> str | None:
     return None
 
 
-def visual_relevance(query: str, tags: str, *, location: str | None = None) -> tuple[bool, int, str]:
+def visual_relevance(query: str, tags: str, *, location: str | None = None,
+                     required_phrases: tuple[str, ...] | list[str] | None = None) -> tuple[bool, int, str]:
     """Require a shared specific subject and reject explicit country/object conflicts.
 
     A positive result means 'plausible stock illustration', NOT historic evidence.
@@ -63,6 +65,9 @@ def visual_relevance(query: str, tags: str, *, location: str | None = None) -> t
     tag_words = _words(tags)
     if not query_words or not tag_words:
         return False, 0, "missing visual subject metadata"
+
+    if required_phrases and not any(_has_phrase(tags, phrase) for phrase in required_phrases):
+        return False, 0, "missing required club identity or venue in footage tags"
 
     if location:
         for other_country, cues in LOCATION_HINTS.items():
