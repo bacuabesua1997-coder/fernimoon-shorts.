@@ -54,7 +54,7 @@ class RenderIntegrationTests(unittest.TestCase):
             timing = json.loads((delivery / "timing.json").read_text())
             self.assertEqual(len(timing["scene_boundaries"]), 7)
             self.assertLess(timing["words"][-1]["end"], 40)
-            self.assertIn("FERNIMOON STUDIO", (delivery / "captions.ass").read_text())
+            self.assertNotIn("FERNIMOON STUDIO", (delivery / "captions.ass").read_text())
             self.assertNotIn("secret-", "".join(p.read_text() for p in delivery.iterdir() if p.suffix != ".mp4"))
             # Optional local copy for visual inspection. CI leaves test media in its temporary directory.
             preview = os.environ.get("FERNIMOON_TEST_PREVIEW")
