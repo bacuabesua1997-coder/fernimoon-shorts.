@@ -17,7 +17,7 @@ LOCAL_TIMEZONE = "Asia/Ho_Chi_Minh"
 
 # League IDs are resolved from the provider at runtime; the registry is name-based.
 MAJOR_COMPETITIONS = {
-    "premier league": ("england",),
+    "premier league": ("england", "russia"),
     "championship": ("england",),
     "la liga": ("spain",),
     "bundesliga": ("germany",),
@@ -28,6 +28,7 @@ MAJOR_COMPETITIONS = {
     "super lig": ("turkey",),
     "scottish premiership": ("scotland",),
     "belgian pro league": ("belgium",),
+    "jupiler pro league": ("belgium",),
     "saudi pro league": ("saudi arabia",),
     "major league soccer": ("usa", "united states"),
     "liga mx": ("mexico",),
@@ -52,6 +53,31 @@ MAJOR_COMPETITIONS = {
     "copa america": (),
     "africa cup of nations": (),
     "asian cup": (),
+    "russian premier league": ("russia",),
+    "chinese super league": ("china",),
+    "indian super league": ("india",),
+    "egyptian premier league": ("egypt",),
+    "premier soccer league": ("south africa",),
+    "uae pro league": ("united arab emirates",),
+    "qatar stars league": ("qatar",),
+    "persian gulf pro league": ("iran",),
+    "super league greece": ("greece",),
+    "ekstraklasa": ("poland",),
+    "allsvenskan": ("sweden",),
+    "eliteserien": ("norway",),
+    "superliga": ("denmark",),
+    "liga 1": ("indonesia",),
+    "thai league 1": ("thailand",),
+    "v league 1": ("vietnam",),
+    "malaysia super league": ("malaysia",),
+    "singapore premier league": ("singapore",),
+    "uefa women's champions league": (),
+    "women's super league": ("england",),
+    "nwsl": ("usa", "united states"),
+    "liga f": ("spain",),
+    "frauen bundesliga": ("germany",),
+    "fifa women's world cup": (),
+    "concacaf gold cup": (),
 }
 
 
