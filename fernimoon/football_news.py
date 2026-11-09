@@ -205,6 +205,9 @@ def _topic_aliases(topic: str) -> list[str]:
 
 
 def _matches_topic(article: dict, topic: str) -> bool:
+    resolved = resolve_team_entity(topic)
+    if resolved and article.get("team_entity") == resolved[0]:
+        return True
     aliases = _topic_aliases(topic)
     if not aliases:
         return True
@@ -230,6 +233,10 @@ def _parse_feed(payload: bytes, feed_url: str, allowed: set[str]) -> list[dict]:
     except ET.ParseError:
         raise PipelineError("Football News: publisher returned malformed RSS or Atom XML.") from None
     host = urlparse(feed_url).hostname or ""
+    feed_team = next(
+        (canonical for canonical, urls in TEAM_NEWS_FEEDS.items() if feed_url in urls),
+        None,
+    )
     feed_title = ""
     for node in root.iter():
         if _local_name(node.tag) in {"channel", "feed"}:
@@ -257,6 +264,7 @@ def _parse_feed(payload: bytes, feed_url: str, allowed: set[str]) -> list[dict]:
             "published_at": date,
             "url": link,
             "source_type": "publisher_rss",
+            "team_entity": feed_team,
         })
     return result
 
