@@ -67,7 +67,8 @@ def search_commons(query: str, *, limit: int = 15) -> list[dict]:
 
 
 def pick_media(pages: list[dict], query: str, *, kind: str, context: str = "",
-               used_titles: set[str] | None = None) -> dict | None:
+               used_titles: set[str] | None = None,
+               required_phrases: tuple[str, ...] | list[str] | None = None) -> dict | None:
     used_titles = used_titles or set()
     location = target_location(context) if context else None
     ranked = []
@@ -118,7 +119,10 @@ def pick_media(pages: list[dict], query: str, *, kind: str, context: str = "",
                 continue
             score = len(requested & found) * 10
         else:
-            accepted, score, _ = visual_relevance(query, description_for_matching, location=location)
+            accepted, score, _ = visual_relevance(
+                query, description_for_matching, location=location,
+                required_phrases=required_phrases,
+            )
             if not accepted:
                 continue
         if kind == "illustration" and mime.startswith("video/"):
@@ -195,14 +199,18 @@ def download_media(url: str, path: Path):
 
 
 def find_and_download(queries: list[str], kind: str, work: Path, index: int,
-                      used_titles: set[str], context: str = "") -> dict | None:
+                      used_titles: set[str], context: str = "",
+                      required_phrases: tuple[str, ...] | list[str] | None = None) -> dict | None:
     for query in queries[:2]:
         try:
             pages = search_commons(query)
         except PipelineError:
             continue
         for _ in range(3):
-            asset = pick_media(pages, query, kind=kind, context=context, used_titles=used_titles)
+            asset = pick_media(
+                pages, query, kind=kind, context=context, used_titles=used_titles,
+                required_phrases=required_phrases,
+            )
             if asset is None:
                 break
             used_titles.add(asset["title"])
