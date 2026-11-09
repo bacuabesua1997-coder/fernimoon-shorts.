@@ -54,6 +54,15 @@ def build_football_research(api_key: str, topic: str, match_date: str | None,
         include_statistics=need_stats,
     )
     news = collect_football_news(topic, editorial_format)
+    print(
+        "Football news retrieval: "
+        f"{news.get('feed_count', 0)} feeds; "
+        f"{news.get('successful_article_count', 0)} unique publisher articles; "
+        f"{news.get('selected_count', 0)} selected for '{editorial_format}'.",
+        flush=True,
+    )
+    for warning in news.get("feed_errors", [])[:5]:
+        print(f"Football RSS warning: {warning}", flush=True)
 
     fixtures = match_context.get("fixtures") or []
     articles = news.get("articles") or []
