@@ -134,7 +134,7 @@ class FootballCompetitionTests(unittest.TestCase):
 class ClubSpecificVisualTests(unittest.TestCase):
     def test_manchester_united_scene_searches_are_club_specific(self):
         terms = visual_query_for_scene(
-            "Manchester United", ["football training", "soccer supporters"], 0
+            "Manchester United", ["football training", "soccer supporters"], 1
         )
         self.assertTrue(all("manchester united" in term.lower() for term in terms))
         self.assertTrue(any("old trafford" in term.lower() for term in terms))
@@ -150,7 +150,7 @@ class ClubSpecificVisualTests(unittest.TestCase):
         self.assertFalse(matches_visual_identity(generic_hit["tags"], entity))
         self.assertIsNone(select_footage(
             [generic_hit], set(), query="Manchester United football stadium",
-            required_entity=entity,
+            required_phrases=entity["visual_phrases"],
         ))
         self.assertTrue(matches_visual_identity("Old Trafford Manchester United stadium", entity))
 
