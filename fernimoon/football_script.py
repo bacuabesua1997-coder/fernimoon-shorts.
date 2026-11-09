@@ -30,6 +30,10 @@ def generate_football_script(topic: str, config: Config, football_context: dict)
         "Description should include #Football and #Shorts, and must not include #FERNIMOONSTUDIO. "
         "No fabricated breaking news or transfer rumours. Keep the language suitable for a worldwide audience."
     )
+    request_schema = json.loads(json.dumps(SCRIPT_SCHEMA))
+    scene_schema = request_schema["properties"]["scenes"]["items"]
+    scene_schema["required"] = ["narration", "search_terms"]
+    scene_schema["properties"].pop("archive_queries", None)
     feedback = ""
     for attempt in range(2):
         response = request_json(
@@ -46,7 +50,7 @@ def generate_football_script(topic: str, config: Config, football_context: dict)
                     ),
                 }, ensure_ascii=False) + feedback}]}],
                 "generationConfig": {"responseMimeType": "application/json",
-                                     "responseSchema": SCRIPT_SCHEMA,
+                                     "responseSchema": request_schema,
                                      "temperature": 0.45, "maxOutputTokens": 8192},
             })
         try:
