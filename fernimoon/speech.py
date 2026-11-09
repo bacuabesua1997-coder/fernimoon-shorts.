@@ -47,11 +47,25 @@ def alignment_words(alignment: dict, narration: str) -> list[Word]:
 
 def synthesize(narration: str, config: Config, destination: Path) -> list[Word]:
     # Do not automatically repeat a paid TTS request after an ambiguous network failure.
+    voice_settings = {
+        "stability": 0.5,
+        "similarity_boost": 0.75,
+        "use_speaker_boost": True,
+    }
+    if config.mode == "football":
+        # Voice identity is selected by FOOTBALL_ELEVENLABS_VOICE_ID; these
+        # settings add controlled sports-presenter emphasis without shouting.
+        voice_settings = {
+            "stability": 0.42,
+            "similarity_boost": 0.80,
+            "style": 0.35,
+            "use_speaker_boost": True,
+        }
     result = request_json(
         f"https://api.elevenlabs.io/v1/text-to-speech/{config.voice_id}/with-timestamps?output_format=mp3_44100_128",
         service="ElevenLabs", headers={"xi-api-key": config.elevenlabs_key}, retries=0,
         body={"text": narration, "model_id": config.elevenlabs_model, "language_code": "en",
-              "voice_settings": {"stability": 0.5, "similarity_boost": 0.75, "use_speaker_boost": True}},
+              "voice_settings": voice_settings},
     )
     words = alignment_words(result.get("alignment", {}), narration)
     try:
