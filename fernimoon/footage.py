@@ -7,6 +7,7 @@ from pathlib import Path
 from urllib.parse import urlencode
 
 from .config import PipelineError
+from .football_entities import matches_visual_identity
 from .relevance import target_location, visual_relevance
 from .http import MAX_VIDEO_BYTES, VideoDownloadError, download_video, request_json, validate_video_url
 
@@ -22,6 +23,8 @@ def select_footage(hits: list, used: set[int], *, query: str | None = None,
         if not isinstance(hit, dict) or hit.get("type") != "film" or not isinstance(hit.get("id"), int):
             continue
         if hit["id"] in used or SYNTHETIC.search(hit.get("tags", "")):
+            continue
+        if required_entity and not matches_visual_identity(hit.get("tags", ""), required_entity):
             continue
         if hit.get("isAiGenerated") or hit.get("is_ai_generated") or hit.get("ai_generated"):
             continue
